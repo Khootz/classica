@@ -1,9 +1,4 @@
-try:
-    from pathway.xpacks.llm.vectorstore.hybrid_index import HybridIndex
-except ImportError:
-    # fallback for other versions
-    from pathway.xpacks.llm.vectorstore import HybridIndex
-
+from pathway.stdlib.indexing.hybrid_index import HybridIndex
 from sqlmodel import Session, select
 from models import Document
 import json

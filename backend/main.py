@@ -2,17 +2,16 @@ from fastapi import FastAPI
 from database import init_db, get_session
 from routes import tasks, documents, chat, memo
 from services import pathway_client
+from database import engine
+from sqlmodel import Session
 
 app = FastAPI(title="CFO Copilot Backend")
 
 @app.on_event("startup")
 def on_startup():
-    # 1. Init DB
     init_db()
-
-    # 2. Reload indexes
-    from sqlmodel import Session
-    with Session(next(get_session)) as session:
+    # Open a plain session directly, not via get_session()
+    with Session(engine) as session:
         pathway_client.rebuild_indexes_from_db(session)
 
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])

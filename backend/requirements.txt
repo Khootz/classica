@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+sqlmodel
+pydantic
+requests
+google-generativeai
+pathway
+reportlab
+python-dotenv
+pdf2image
+unstructured
+pathway[xpack-llm-docs]==0.26.3

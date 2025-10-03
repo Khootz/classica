@@ -97,8 +97,6 @@ export default function Home() {
         onClose={() => setShowUpload(false)}
         taskId={selectedTaskId || undefined}
         taskName={selectedTask?.name}
-        onValidationStart={handleValidationStart}
-        onValidationComplete={handleValidationComplete}
       />
 
       <SummaryModal

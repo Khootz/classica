@@ -95,17 +95,23 @@ export const memoApi = {
     }),
 }
 
-// Polling utility for chat status
+// Polling utility for chat status with 404 retry logic
 export async function pollChatStatus(
   chatId: string,
   onProgress: (status: ChatStatus) => void,
   intervalMs: number = 2000,
+  maxRetries: number = 30,
 ): Promise<ChatStatus> {
   return new Promise((resolve, reject) => {
+    let retryCount = 0
+
     const poll = async () => {
       try {
         const status = await chatApi.getStatus(chatId)
         onProgress(status)
+
+        // Reset retry count on successful fetch
+        retryCount = 0
 
         if (status.status === "done") {
           resolve(status)
@@ -113,7 +119,21 @@ export async function pollChatStatus(
           setTimeout(poll, intervalMs)
         }
       } catch (error) {
-        reject(error)
+        // Check if it's a 404 error (chat not created yet)
+        if (error instanceof Error && error.message.includes("404")) {
+          retryCount++
+          
+          if (retryCount <= maxRetries) {
+            // Chat not created yet, retry after interval
+            console.log(`Chat ${chatId} not found yet, retrying... (${retryCount}/${maxRetries})`)
+            setTimeout(poll, intervalMs)
+          } else {
+            reject(new Error(`Chat ${chatId} not found after ${maxRetries} retries`))
+          }
+        } else {
+          // Other errors should fail immediately
+          reject(error)
+        }
       }
     }
 

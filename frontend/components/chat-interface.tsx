@@ -220,7 +220,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                 }
               }}
               placeholder="Ask about document validity, red flags, compliance issues..."
-              className="min-h-[60px] resize-none"
+              className="min-h-[60px] resize-none text-white"
               disabled={isAnalyzing}
             />
             <Button onClick={handleSend} disabled={!input.trim() || isAnalyzing} size="lg" className="px-6">

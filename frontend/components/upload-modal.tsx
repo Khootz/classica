@@ -7,12 +7,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Upload, X, FileText, AlertCircle, CheckCircle2 } from "lucide-react"
 import { documentsApi } from "@/lib/api"
+import { validateDocument } from "@/lib/validation"
 
 interface UploadModalProps {
   open: boolean
   onClose: () => void
   taskId?: string
   taskName?: string
+  onValidationStart?: (filename: string) => void
+  onValidationComplete?: (filename: string, result: { success: boolean; summary?: string; error?: string }) => void
 }
 
 interface FileUploadStatus {
@@ -22,7 +25,14 @@ interface FileUploadStatus {
   error?: string
 }
 
-export function UploadModal({ open, onClose, taskId, taskName }: UploadModalProps) {
+export function UploadModal({
+  open,
+  onClose,
+  taskId,
+  taskName,
+  onValidationStart,
+  onValidationComplete,
+}: UploadModalProps) {
   const [files, setFiles] = useState<FileUploadStatus[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
@@ -59,9 +69,7 @@ export function UploadModal({ open, onClose, taskId, taskName }: UploadModalProp
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== "pending") continue
 
-      setFiles((prev) =>
-        prev.map((f, idx) => (idx === i ? { ...f, status: "uploading" as const } : f)),
-      )
+      setFiles((prev) => prev.map((f, idx) => (idx === i ? { ...f, status: "uploading" as const } : f)))
 
       try {
         const result = await documentsApi.upload(taskId, files[i].file)
@@ -76,6 +84,19 @@ export function UploadModal({ open, onClose, taskId, taskName }: UploadModalProp
               : f,
           ),
         )
+
+        // Trigger automatic validation
+        const filename = files[i].file.name
+        if (onValidationStart) {
+          onValidationStart(filename)
+        }
+
+        // Run validation in background
+        validateDocument(taskId, filename).then((validationResult) => {
+          if (onValidationComplete) {
+            onValidationComplete(filename, validationResult)
+          }
+        })
       } catch (error) {
         setFiles((prev) =>
           prev.map((f, idx) =>

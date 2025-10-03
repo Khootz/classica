@@ -6,6 +6,7 @@ import { ChatInterface } from "@/components/chat-interface"
 import { DocumentsModal } from "@/components/documents-modal"
 import { UploadModal } from "@/components/upload-modal"
 import { SummaryModal } from "@/components/summary-modal"
+import { DocumentValidationToast, ValidationResult } from "@/components/document-validation-toast"
 import { tasksApi } from "@/lib/api"
 import type { Task } from "@/types/api"
 
@@ -16,6 +17,7 @@ export default function Home() {
   const [showUpload, setShowUpload] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [validations, setValidations] = useState<ValidationResult[]>([])
 
   useEffect(() => {
     fetchTasks()
@@ -31,6 +33,38 @@ export default function Home() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleValidationStart = (filename: string) => {
+    setValidations((prev) => [
+      ...prev,
+      {
+        filename,
+        status: "validating",
+      },
+    ])
+  }
+
+  const handleValidationComplete = (
+    filename: string,
+    result: { success: boolean; summary?: string; error?: string },
+  ) => {
+    setValidations((prev) =>
+      prev.map((v) =>
+        v.filename === filename
+          ? {
+              ...v,
+              status: result.success ? "success" : "error",
+              summary: result.summary,
+              error: result.error,
+            }
+          : v,
+      ),
+    )
+  }
+
+  const handleCloseValidation = (filename: string) => {
+    setValidations((prev) => prev.filter((v) => v.filename !== filename))
   }
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId)
@@ -63,6 +97,8 @@ export default function Home() {
         onClose={() => setShowUpload(false)}
         taskId={selectedTaskId || undefined}
         taskName={selectedTask?.name}
+        onValidationStart={handleValidationStart}
+        onValidationComplete={handleValidationComplete}
       />
 
       <SummaryModal
@@ -70,6 +106,9 @@ export default function Home() {
         onClose={() => setShowSummary(false)}
         taskId={selectedTaskId || undefined}
       />
+
+      {/* Validation Toasts */}
+      <DocumentValidationToast validations={validations} onClose={handleCloseValidation} />
     </div>
   )
 }

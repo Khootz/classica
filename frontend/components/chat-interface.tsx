@@ -149,16 +149,16 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   message.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"
                 }`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-white">{message.content}</p>
 
                 {/* Reasoning Log */}
                 {message.reasoning && message.reasoning.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Reasoning:</p>
+                    <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
                       {message.reasoning.map((step, idx) => (
-                        <div key={idx} className="text-xs text-muted-foreground">
-                          • {step.step}: <span className="font-medium">{step.value}</span>
+                        <div key={idx} className="text-xs text-white/70">
+                          • {step.step}: <span className="font-medium text-white">{step.value}</span>
                         </div>
                       ))}
                     </div>
@@ -168,10 +168,10 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                 {/* Citations */}
                 {message.citations && message.citations.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Sources:</p>
+                    <p className="text-xs font-semibold text-white/70 mb-2">Sources:</p>
                     <div className="space-y-1">
                       {message.citations.map((citation, idx) => (
-                        <div key={idx} className="text-xs text-muted-foreground flex items-center gap-1">
+                        <div key={idx} className="text-xs text-white/70 flex items-center gap-1">
                           <ExternalLink className="w-3 h-3" />
                           {citation.doc} (Page {citation.page})
                         </div>
@@ -180,7 +180,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   </div>
                 )}
 
-                <p className="text-xs mt-2 opacity-70">{message.timestamp.toLocaleTimeString()}</p>
+                <p className="text-xs mt-2 opacity-70 text-white">{message.timestamp.toLocaleTimeString()}</p>
               </div>
             </div>
           ))}
@@ -189,10 +189,10 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-foreground">{progressStatus}</span>
+                <span className="text-sm font-medium text-white">{progressStatus}</span>
               </div>
               <Progress value={progressPercent} className="mb-2" />
-              <p className="text-xs text-muted-foreground">{progressPercent}% complete</p>
+              <p className="text-xs text-white/70">{progressPercent}% complete</p>
             </div>
           )}
 

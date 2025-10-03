@@ -1,3 +1,0 @@
-pathway
-python-dotenv
-google-generativeai

@@ -76,8 +76,9 @@ export const chatApi = {
       body: JSON.stringify(data),
     }),
 
-  // GET /chat/{chat_id}/status - Poll chat status
-  getStatus: (chatId: string) => apiRequest<ChatStatus>(`/chat/${chatId}/status`),
+  // GET /tasks/{task_id}/chat/{chat_id}/status - Poll chat status
+  getStatus: (taskId: string, chatId: string) =>
+    apiRequest<ChatStatus>(`/tasks/${taskId}/chat/${chatId}/status`),
 
   // GET /tasks/{task_id}/chat/{chat_id} - Get final chat answer
   getAnswer: (taskId: string, chatId: string) => apiRequest<ChatAnswer>(`/tasks/${taskId}/chat/${chatId}`),
@@ -97,6 +98,7 @@ export const memoApi = {
 
 // Polling utility for chat status with 404 retry logic
 export async function pollChatStatus(
+  taskId: string,
   chatId: string,
   onProgress: (status: ChatStatus) => void,
   intervalMs: number = 2000,
@@ -107,7 +109,7 @@ export async function pollChatStatus(
 
     const poll = async () => {
       try {
-        const status = await chatApi.getStatus(chatId)
+        const status = await chatApi.getStatus(taskId, chatId)
         onProgress(status)
 
         // Reset retry count on successful fetch

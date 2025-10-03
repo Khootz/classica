@@ -31,6 +31,7 @@ export async function validateDocument(taskId: string, filename: string) {
     // Poll for completion
     let finalStatus
     await pollChatStatus(
+      taskId,
       chatResponse.chat_id,
       (status) => {
         finalStatus = status

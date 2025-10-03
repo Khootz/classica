@@ -55,6 +55,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
 
       // Poll for status updates
       await pollChatStatus(
+        selectedDataroom.id,
         chatResponse.chat_id,
         (status) => {
           setProgressStatus(status.message)

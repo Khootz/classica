@@ -5,17 +5,16 @@ import type React from "react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Upload, X, FileText, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Upload, X, FileText, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { documentsApi } from "@/lib/api"
-import { validateDocument } from "@/lib/validation"
+import { validateDocuments } from "@/lib/validation"
+import { RedFlagsPopup, type DocumentRedFlags } from "@/components/redflags-popup"
 
 interface UploadModalProps {
   open: boolean
   onClose: () => void
   taskId?: string
   taskName?: string
-  onValidationStart?: (filename: string) => void
-  onValidationComplete?: (filename: string, result: { success: boolean; summary?: string; error?: string }) => void
 }
 
 interface FileUploadStatus {
@@ -25,16 +24,12 @@ interface FileUploadStatus {
   error?: string
 }
 
-export function UploadModal({
-  open,
-  onClose,
-  taskId,
-  taskName,
-  onValidationStart,
-  onValidationComplete,
-}: UploadModalProps) {
+export function UploadModal({ open, onClose, taskId, taskName }: UploadModalProps) {
   const [files, setFiles] = useState<FileUploadStatus[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
+  const [showRedFlagsPopup, setShowRedFlagsPopup] = useState(false)
+  const [validationResults, setValidationResults] = useState<DocumentRedFlags[]>([])
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -65,7 +60,9 @@ export function UploadModal({
     if (!taskId) return
 
     setIsUploading(true)
+    const uploadedFilenames: string[] = []
 
+    // Upload all files
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== "pending") continue
 
@@ -84,19 +81,7 @@ export function UploadModal({
               : f,
           ),
         )
-
-        // Trigger automatic validation
-        const filename = files[i].file.name
-        if (onValidationStart) {
-          onValidationStart(filename)
-        }
-
-        // Run validation in background
-        validateDocument(taskId, filename).then((validationResult) => {
-          if (onValidationComplete) {
-            onValidationComplete(filename, validationResult)
-          }
-        })
+        uploadedFilenames.push(files[i].file.name)
       } catch (error) {
         setFiles((prev) =>
           prev.map((f, idx) =>
@@ -113,6 +98,70 @@ export function UploadModal({
     }
 
     setIsUploading(false)
+
+    // Run batch validation after all uploads complete
+    if (uploadedFilenames.length > 0) {
+      setIsValidating(true)
+      
+      try {
+        const validationResult = await validateDocuments(taskId, uploadedFilenames)
+        
+        if (validationResult.success && validationResult.summary) {
+          // Parse the validation summary to extract red flags per document
+          const parsedResults = parseValidationSummary(validationResult.summary, uploadedFilenames)
+          setValidationResults(parsedResults)
+          setShowRedFlagsPopup(true)
+        }
+      } catch (error) {
+        console.error("Validation error:", error)
+      } finally {
+        setIsValidating(false)
+      }
+    }
+  }
+
+  // Helper function to parse validation summary into structured red flags
+  const parseValidationSummary = (summary: string, filenames: string[]): DocumentRedFlags[] => {
+    // Simple parsing: split by document sections and extract red flags
+    // This is a basic implementation - you may want to enhance it based on actual AI response format
+    const results: DocumentRedFlags[] = []
+    
+    for (const filename of filenames) {
+      // Try to find the section for this document in the summary
+      const docSection = summary.toLowerCase().includes(filename.toLowerCase())
+        ? summary
+        : ""
+      
+      // Extract red flags (look for common patterns)
+      const redFlags: string[] = []
+      const lines = summary.split("\n")
+      
+      let isInRedFlagsSection = false
+      for (const line of lines) {
+        const lowerLine = line.toLowerCase()
+        
+        // Check if we're entering a red flags section
+        if (lowerLine.includes("red flag") || lowerLine.includes("critical") || lowerLine.includes("risk")) {
+          isInRedFlagsSection = true
+        }
+        
+        // Extract bullet points or numbered items that might be red flags
+        if (isInRedFlagsSection && (line.trim().startsWith("-") || line.trim().startsWith("•") || /^\d+\./.test(line.trim()))) {
+          const flag = line.replace(/^[-•\d.]\s*/, "").trim()
+          if (flag.length > 10) { // Only include substantial flags
+            redFlags.push(flag)
+          }
+        }
+      }
+      
+      results.push({
+        filename,
+        redFlags,
+        summary: summary, // Include full summary for now
+      })
+    }
+    
+    return results
   }
 
   const handleClose = () => {
@@ -134,23 +183,37 @@ export function UploadModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Upload Documents - {taskName || "Dataroom"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Upload Documents - {taskName || "Dataroom"}</DialogTitle>
+          </DialogHeader>
 
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary transition-colors cursor-pointer"
-          onClick={() => document.getElementById("file-input")?.click()}
-        >
-          <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-sm font-medium text-foreground mb-1">Drop files here or click to browse</p>
-          <p className="text-xs text-muted-foreground">Supports PDF, DOCX, XLSX, and other document formats</p>
-          <input id="file-input" type="file" multiple onChange={handleFileInput} className="hidden" />
-        </div>
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary transition-colors cursor-pointer"
+            onClick={() => document.getElementById("file-input")?.click()}
+          >
+            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-sm font-medium text-foreground mb-1">Drop files here or click to browse</p>
+            <p className="text-xs text-muted-foreground">Supports PDF, DOCX, XLSX, and other document formats</p>
+            <input id="file-input" type="file" multiple onChange={handleFileInput} className="hidden" />
+          </div>
+
+          {/* Validation Status */}
+          {isValidating && (
+            <div className="bg-primary/10 border border-primary rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <div>
+                  <p className="text-sm font-medium text-white">Running Automated Document Validation...</p>
+                  <p className="text-xs text-white/70">Analyzing documents for potential red flags</p>
+                </div>
+              </div>
+            </div>
+          )}
 
         {files.length > 0 && (
           <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -203,17 +266,26 @@ export function UploadModal({
         )}
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-            {isUploading ? "Close" : "Cancel"}
+          <Button variant="outline" onClick={handleClose} disabled={isUploading || isValidating}>
+            {isUploading || isValidating ? "Close" : "Cancel"}
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={files.length === 0 || isUploading || !taskId || files.every((f) => f.status !== "pending")}
+            disabled={files.length === 0 || isUploading || isValidating || !taskId || files.every((f) => f.status !== "pending")}
           >
-            {isUploading ? "Uploading..." : `Upload ${files.length > 0 ? `(${files.length})` : ""}`}
+            {isUploading ? "Uploading..." : isValidating ? "Validating..." : `Upload ${files.length > 0 ? `(${files.length})` : ""}`}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Red Flags Popup */}
+    <RedFlagsPopup
+      open={showRedFlagsPopup}
+      onClose={() => setShowRedFlagsPopup(false)}
+      documents={validationResults}
+      taskName={taskName}
+    />
+  </>
   )
 }

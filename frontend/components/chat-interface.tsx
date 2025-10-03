@@ -149,7 +149,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   message.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"
                 }`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-white">{message.content}</p>
+                <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
                 {/* Reasoning Log */}
                 {message.reasoning && message.reasoning.length > 0 && (

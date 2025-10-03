@@ -18,7 +18,7 @@ Please analyze the document that was just uploaded and provide:
 
 Keep the response concise and focused on the most important findings.`
 
-// Auto-validation helper
+// Auto-validation helper for single document
 export async function validateDocument(taskId: string, filename: string) {
   const { chatApi, pollChatStatus } = await import("@/lib/api")
 
@@ -26,6 +26,47 @@ export async function validateDocument(taskId: string, filename: string) {
     // Send validation request
     const chatResponse = await chatApi.send(taskId, {
       message: `${DOCUMENT_VALIDATION_PROMPT}\n\nDocument: ${filename}`,
+    })
+
+    // Poll for completion
+    let finalStatus
+    await pollChatStatus(
+      taskId,
+      chatResponse.chat_id,
+      (status) => {
+        finalStatus = status
+      },
+      2000,
+    )
+
+    // Get the answer
+    const answer = await chatApi.getAnswer(taskId, chatResponse.chat_id)
+
+    return {
+      success: true,
+      summary: answer.response,
+      chatId: chatResponse.chat_id,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Validation failed",
+    }
+  }
+}
+
+// Batch validation helper for multiple documents
+export async function validateDocuments(taskId: string, filenames: string[]) {
+  const { chatApi, pollChatStatus } = await import("@/lib/api")
+
+  try {
+    // Create a message listing all documents
+    const documentList = filenames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")
+    const message = `${DOCUMENT_VALIDATION_PROMPT}\n\nPlease analyze the following documents that were just uploaded:\n\n${documentList}\n\nFor each document, provide:\n- A brief summary\n- Any critical red flags (list them clearly)\n- Key risk factors\n\nFormat your response clearly for each document.`
+
+    // Send validation request
+    const chatResponse = await chatApi.send(taskId, {
+      message,
     })
 
     // Poll for completion

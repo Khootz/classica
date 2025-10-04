@@ -13,13 +13,18 @@ UPLOAD_DIR = "./uploads"
 DEFAULT_SCHEMA = {
     "type": "object",
     "properties": {
+        "Company": {"type": "string"},
         "Revenue": {"type": "string"},
         "TotalDebt": {"type": "string"},
         "Equity": {"type": "string"},
-        "CashFlow": {"type": "string"}
+        "CashFlow": {"type": "string"},
+        "NetIncome": {"type": "string"},
+        "EBITDA": {"type": "string"},
+        "OperatingIncome": {"type": "string"}
     },
     "required": ["Revenue", "TotalDebt", "Equity"]
 }
+
 
 # -----------------------
 # Upload a document (POST)
@@ -30,32 +35,37 @@ async def upload_document(
     file: UploadFile = File(...),
     session: Session = Depends(get_session)
 ):
-    # 1. Save file
+    # 1️⃣ Save file locally
     task_dir = os.path.join(UPLOAD_DIR, task_id)
     os.makedirs(task_dir, exist_ok=True)
     file_path = os.path.join(task_dir, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # 2. ADE parse → markdown
+    # 2️⃣ ADE parse → markdown
     parsed = landing_ai.parse_pdf(file_path)
     markdown = parsed.get("markdown", "")
 
-    # 3. ADE extract → structured JSON
+    # 3️⃣ ADE extract → structured JSON
     extraction = landing_ai.extract_from_markdown(markdown, DEFAULT_SCHEMA)
     extraction_json = extraction.get("extraction", {})
+    import json
+    print("\n🚀 Raw ADE Response:", json.dumps(extraction, indent=2))
+    print("🧩 ADE Extraction JSON:", json.dumps(extraction_json, indent=2))
 
-    # 4. Build docs for Pathway
-    docs_to_add = [
-        {"text": markdown, "metadata": {"doc": file.filename}},
-        {"text": json.dumps(extraction_json), "metadata": {"doc": file.filename}}
-    ]
-    pathway_client.add_to_index(task_id, docs_to_add)
+    # ---------------------------------------------------
+    # 🧩 4️⃣ Pathway pipeline: compute financial metrics
+    # ---------------------------------------------------
+    metrics = pathway_client.process_ade_data(extraction_json)
 
-    # 5. Run finance logic
+    # ---------------------------------------------------
+    # 🧠 5️⃣ CFO logic (based on Pathway pipeline results)
+    # ---------------------------------------------------
     analysis = finance_logic.analyze_financials(extraction_json)
 
-    # 6. Save to DB
+    # ---------------------------------------------------
+    # 💾 6️⃣ Save all metadata to DB
+    # ---------------------------------------------------
     doc = Document(
         task_id=task_id,
         filename=file.filename,
@@ -64,20 +74,25 @@ async def upload_document(
         extraction_json=json.dumps(extraction_json),
         meta_json=json.dumps({"parsed": True}),
         ingested=True,
-        red_flags=json.dumps(analysis["red_flags"])
+        red_flags=json.dumps(analysis["insights"])  # update key name
     )
     session.add(doc)
     session.commit()
     session.refresh(doc)
 
+    # ---------------------------------------------------
+    # ✅ 7️⃣ Return a rich response
+    # ---------------------------------------------------
     return {
         "id": doc.id,
         "task_id": task_id,
         "filename": doc.filename,
         "ingested": True,
-        "red_flags": analysis["red_flags"],
+        "metrics": metrics,
+        "analysis": analysis,
         "extraction": extraction_json
     }
+
 
 # ---------------------
 # List documents (GET)

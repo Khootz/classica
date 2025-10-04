@@ -17,7 +17,9 @@ class Document(SQLModel, table=True):
     task_id: str = Field(foreign_key="task.id")
     filename: str
     path: str
-    meta_json: Optional[str] = None   # instead of metadata
+    markdown: Optional[str] = None      # <-- new
+    extraction_json: Optional[str] = None  # <-- new
+    meta_json: Optional[str] = None
     ingested: bool = False
     red_flags: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -11,3 +11,5 @@ python-dotenv
 pdf2image
 unstructured
 pathway[xpack-llm-docs]==0.26.3
+pathway[xpack-llm-local]
+pillow

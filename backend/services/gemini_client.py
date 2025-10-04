@@ -3,7 +3,7 @@ import os
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def ask_gemini(messages: list, model="gemini-1.5-flash"):
+def ask_gemini(messages: list, model="gemini-2.5-flash"):
     """
     messages = [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]
     """

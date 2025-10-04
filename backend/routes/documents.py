@@ -7,9 +7,23 @@ from models import Document
 from services import landing_ai, pathway_client, finance_logic
 
 router = APIRouter()
-
 UPLOAD_DIR = "./uploads"
 
+# Default schema for ADE extract
+DEFAULT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "Revenue": {"type": "string"},
+        "TotalDebt": {"type": "string"},
+        "Equity": {"type": "string"},
+        "CashFlow": {"type": "string"}
+    },
+    "required": ["Revenue", "TotalDebt", "Equity"]
+}
+
+# -----------------------
+# Upload a document (POST)
+# -----------------------
 @router.post("/")
 async def upload_document(
     task_id: str,
@@ -23,21 +37,32 @@ async def upload_document(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # 2. Call LandingAI ADE
-    extracted_data = landing_ai.extract_with_ade(file_path)
+    # 2. ADE parse → markdown
+    parsed = landing_ai.parse_pdf(file_path)
+    markdown = parsed.get("markdown", "")
 
-    # 3. Add to Pathway index
-    pathway_client.add_to_index(task_id, json.dumps(extracted_data), metadata={"doc": file.filename})
+    # 3. ADE extract → structured JSON
+    extraction = landing_ai.extract_from_markdown(markdown, DEFAULT_SCHEMA)
+    extraction_json = extraction.get("extraction", {})
 
-    # 4. Run Finance Logic
-    analysis = finance_logic.analyze_financials(extracted_data)
+    # 4. Build docs for Pathway
+    docs_to_add = [
+        {"text": markdown, "metadata": {"doc": file.filename}},
+        {"text": json.dumps(extraction_json), "metadata": {"doc": file.filename}}
+    ]
+    pathway_client.add_to_index(task_id, docs_to_add)
 
-    # 5. Save in DB
+    # 5. Run finance logic
+    analysis = finance_logic.analyze_financials(extraction_json)
+
+    # 6. Save to DB
     doc = Document(
         task_id=task_id,
         filename=file.filename,
         path=file_path,
-        metadata=json.dumps({"extracted": True}),
+        markdown=markdown,
+        extraction_json=json.dumps(extraction_json),
+        meta_json=json.dumps({"parsed": True}),
         ingested=True,
         red_flags=json.dumps(analysis["red_flags"])
     )
@@ -45,11 +70,28 @@ async def upload_document(
     session.commit()
     session.refresh(doc)
 
-    # 6. Return response
     return {
         "id": doc.id,
         "task_id": task_id,
         "filename": doc.filename,
         "ingested": True,
-        "red_flags": analysis["red_flags"]
+        "red_flags": analysis["red_flags"],
+        "extraction": extraction_json
     }
+
+# ---------------------
+# List documents (GET)
+# ---------------------
+@router.get("/")
+async def list_documents(task_id: str, session: Session = Depends(get_session)):
+    docs = session.exec(select(Document).where(Document.task_id == task_id)).all()
+    return [
+        {
+            "id": d.id,
+            "filename": d.filename,
+            "ingested": d.ingested,
+            "red_flags": json.loads(d.red_flags or "[]"),
+            "created_at": str(d.created_at)
+        }
+        for d in docs
+    ]

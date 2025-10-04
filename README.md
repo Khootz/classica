@@ -95,7 +95,7 @@ cd backend
 
 # Create virtual environment
 python -m venv venv
-.\venv\Scripts\activate  # Windows
+.\venv\bin\activate  # Windows
 # source venv/bin/activate  # macOS/Linux
 
 # Install dependencies
@@ -104,6 +104,7 @@ pip install -r requirements.txt
 # Set up environment variables
 # Create a .env file with:
 GEMINI_API_KEY=your_api_key_here
+LANDINGAI_API_KEY=your_api_key_here
 
 # Run the backend
 uvicorn main:app --reload --port 8000
@@ -126,25 +127,6 @@ pnpm dev
 ```
 
 Frontend will be available at: `http://localhost:3000`
-
-#### 4. RAG System Setup (Optional)
-
-```bash
-cd rag
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
-echo "GEMINI_API_KEY=your_api_key_here" > .env
-
-# Run the RAG server
-python main.py
-```
-
-RAG server will be available at: `http://localhost:8011`
-
----
 
 ## 📖 API Documentation
 
@@ -221,7 +203,7 @@ Click "View Live Memo" to see:
 - Pydantic
 - Google Gemini AI
 - Pathway (RAG)
-- Unstructured (Document parsing)
+- Landing AI (Document parsing)
 - ReportLab (PDF generation)
 
 ---
@@ -270,15 +252,8 @@ export const API_BASE_URL = "http://localhost:8000"
 ### Backend (`.env`)
 ```env
 GEMINI_API_KEY=your_api_key_here
-DATABASE_URL=sqlite:///./db/diligent.db  # Optional
+LANDINGAI_API_KEY=your_api_key_here
 ```
-
-### RAG (`.env`)
-```env
-GEMINI_API_KEY=your_api_key_here
-```
-
----
 
 ## 🤝 Contributing
 
@@ -291,22 +266,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License.
 
 ---
-
-## 🙏 Acknowledgments
-
-- Built with [v0.dev](https://v0.dev)
-- UI components from [shadcn/ui](https://ui.shadcn.com)
-- AI powered by [Google Gemini](https://ai.google.dev)
-- RAG framework: [Pathway](https://pathway.com)
-
----
-
-## 📧 Contact
-
-**Manu Vikash** - [@manuvikash](https://github.com/manuvikash)
-
-Project Link: [https://github.com/manuvikash/mna-agent](https://github.com/manuvikash/mna-agent)
-
----
-
-**Made with ❤️ for M&A professionals**

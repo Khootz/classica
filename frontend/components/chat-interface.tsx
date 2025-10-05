@@ -180,9 +180,15 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
               >
                 <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
-                {/* Reasoning Log - Only show if non-empty values exist */}
+                {/* Reasoning Log - Only show if there are meaningful financial insights */}
                 {message.reasoning && message.reasoning.length > 0 && message.reasoning.some(step => {
-                  if (typeof step === 'string') return step.trim().length > 0;
+                  if (typeof step === 'string') {
+                    const trimmed = step.trim();
+                    if (!trimmed) return false;
+                    // Only show reasoning if it contains actual financial metrics/insights
+                    const hasMetrics = /(\d+%|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|\$|₹|€|£)/i.test(trimmed);
+                    return hasMetrics;
+                  }
                   return step.step || step.value;
                 }) && (
                   <div className="mt-3 pt-3 border-t border-border/50">

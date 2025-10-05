@@ -185,7 +185,9 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   const validSteps = message.reasoning.filter(step => {
                     if (typeof step === 'string') {
                       const trimmed = step.trim();
-                      if (!trimmed) return false;
+                      if (!trimmed || trimmed.length < 5) return false;
+                      if (trimmed.includes('No valid financial metrics')) return false;
+                      if (trimmed.includes('Could not process')) return false;
                       // Only show reasoning if it contains actual financial metrics/insights
                       const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
                       return hasMetrics;
@@ -193,7 +195,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                     return !!(step.step || step.value);
                   });
                   return validSteps.length > 0;
-                })() && (
+                })() ? (
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
@@ -212,7 +214,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Citations */}
                 {message.citations && message.citations.length > 0 && (

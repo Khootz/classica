@@ -196,12 +196,25 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"
         chat_msg.content = summary
+        
         # Filter out empty insights and generic "no metrics" messages
         valid_insights = [
             i for i in insights 
-            if i and str(i).strip() and "No valid financial metrics found" not in str(i)
+            if i and str(i).strip() 
+            and "No valid financial metrics" not in str(i)
+            and "Could not process" not in str(i)
+            and len(str(i).strip()) > 5  # Must have meaningful content
         ]
-        chat_msg.reasoning_log = json.dumps(valid_insights)
+        
+        # Only save insights if they contain actual financial terms/numbers
+        has_financial_content = any(
+            any(term in str(insight).lower() for term in 
+                ['ratio', 'margin', 'equity', 'debt', 'revenue', 'profit', 'loss', 
+                 'cash', 'ebitda', 'leverage', '%', '$'])
+            for insight in valid_insights
+        )
+        
+        chat_msg.reasoning_log = json.dumps(valid_insights if has_financial_content else [])
         chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations
         chat_msg.status = "done"
         session.add(chat_msg)

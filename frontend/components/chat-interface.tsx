@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -31,6 +31,35 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progressStatus, setProgressStatus] = useState("")
   const [progressPercent, setProgressPercent] = useState(0)
+
+  // Load previous chats when dataroom changes
+  useEffect(() => {
+    if (!selectedDataroom) {
+      setMessages([])
+      return
+    }
+
+    // Load chat history from backend
+    const loadChats = async () => {
+      try {
+        const chats = await chatApi.getAll(selectedDataroom.id)
+        const loadedMessages: Message[] = chats.map((chat) => ({
+          id: chat.chat_id,
+          role: chat.role as "user" | "assistant",
+          content: chat.response,
+          timestamp: new Date(chat.created_at || Date.now()),
+          reasoning: chat.reasoning_log,
+          citations: chat.citations,
+        }))
+        setMessages(loadedMessages)
+      } catch (error) {
+        console.error("Failed to load chat history:", error)
+        setMessages([])
+      }
+    }
+
+    loadChats()
+  }, [selectedDataroom])
 
   const handleSend = async () => {
     if (!input.trim() || !selectedDataroom) return
@@ -151,16 +180,25 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
               >
                 <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
-                {/* Reasoning Log */}
-                {message.reasoning && message.reasoning.length > 0 && (
+                {/* Reasoning Log - Only show if non-empty values exist */}
+                {message.reasoning && message.reasoning.length > 0 && message.reasoning.some(step => {
+                  if (typeof step === 'string') return step.trim().length > 0;
+                  return step.step || step.value;
+                }) && (
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
-                      {message.reasoning.map((step, idx) => (
-                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
-                          {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
-                        </div>
-                      ))}
+                      {message.reasoning.map((step, idx) => {
+                        // Skip empty entries
+                        if (typeof step === 'string' && !step.trim()) return null;
+                        if (typeof step === 'object' && !step.step && !step.value) return null;
+                        
+                        return (
+                          <div key={idx} className="text-xs text-white/90 leading-relaxed">
+                            {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

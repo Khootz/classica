@@ -69,6 +69,9 @@ export const documentsApi = {
 
 // Chat API
 export const chatApi = {
+  // GET /tasks/{task_id}/chat - Get all chats for a task
+  getAll: (taskId: string) => apiRequest<ChatAnswer[]>(`/tasks/${taskId}/chat`),
+
   // POST /tasks/{task_id}/chat - Send a message
   send: (taskId: string, data: ChatRequest) =>
     apiRequest<ChatResponse>(`/tasks/${taskId}/chat`, {

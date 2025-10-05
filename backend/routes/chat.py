@@ -17,6 +17,31 @@ def update_status(chat_id, status, progress, message):
 
 
 # ----------------------
+# Get All Chats for Task
+# ----------------------
+@router.get("/")
+def get_all_chats(task_id: str, session: Session = Depends(get_session)):
+    chats = session.exec(
+        select(ChatMessage)
+        .where(ChatMessage.task_id == task_id)
+        .order_by(ChatMessage.created_at)
+    ).all()
+    
+    return [
+        {
+            "chat_id": chat.id,
+            "role": chat.role,
+            "response": chat.content,
+            "reasoning_log": json.loads(chat.reasoning_log or "[]"),
+            "citations": json.loads(chat.citations or "[]"),
+            "status": chat.status,
+            "created_at": chat.created_at.isoformat(),
+        }
+        for chat in chats
+    ]
+
+
+# ----------------------
 # Create Chat Request
 # ----------------------
 @router.post("/")

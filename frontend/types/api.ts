@@ -49,10 +49,12 @@ export interface Citation {
 
 export interface ChatAnswer {
   chat_id: string
-  role: "agent"
+  role: "agent" | "user"
   response: string
   reasoning_log: ReasoningLog[]
   citations: Citation[]
+  status?: string
+  created_at?: string
 }
 
 export interface Memo {

@@ -7,14 +7,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { FileText, Upload, Send, AlertCircle, CheckCircle2, ExternalLink } from "lucide-react"
 import { chatApi, pollChatStatus } from "@/lib/api"
-import type { ChatAnswer, Citation, ReasoningStep } from "@/types/api"
+import type { ChatAnswer, Citation, ReasoningLog } from "@/types/api"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
   timestamp: Date
-  reasoning?: ReasoningStep[]
+  reasoning?: ReasoningLog[]
   citations?: Citation[]
 }
 
@@ -157,8 +157,8 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
                       {message.reasoning.map((step, idx) => (
-                        <div key={idx} className="text-xs text-white/70">
-                          • {step.step}: <span className="font-medium text-white">{step.value}</span>
+                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
+                          {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
                         </div>
                       ))}
                     </div>

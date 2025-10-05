@@ -40,6 +40,8 @@ export interface ReasoningStep {
   value: string
 }
 
+export type ReasoningLog = string | ReasoningStep
+
 export interface Citation {
   doc: string
   page: number
@@ -49,7 +51,7 @@ export interface ChatAnswer {
   chat_id: string
   role: "agent"
   response: string
-  reasoning_log: ReasoningStep[]
+  reasoning_log: ReasoningLog[]
   citations: Citation[]
 }
 

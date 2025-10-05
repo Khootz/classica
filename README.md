@@ -8,6 +8,33 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 
 ---
 
+## 🎬 Demo
+
+### Video Walkthrough
+[![Watch the Demo](https://img.shields.io/badge/▶️-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
+
+*Click above to watch a full walkthrough of Diligent in action*
+
+---
+
+## 🏗️ Architecture
+
+![Architecture Diagram](./docs/architecture.png)
+
+### System Overview
+
+**Upload → Extract → Normalize → Analyze → Chat → Export**
+
+1. **Upload:** User uploads PDF through Next.js frontend
+2. **Extract:** Backend sends to LandingAI ADE → Returns structured JSON + markdown
+3. **Normalize:** Pathway processes data, handles missing values, computes ratios
+4. **Analyze:** Finance logic applies threshold rules → Generates insights
+5. **Chat:** Gemini AI generates summaries from structured metrics
+6. **Store:** SQLite database stores all data (documents, chats, memos)
+7. **Export:** ReportLab generates PDF memos
+
+---
+
 ## What This Actually Does
 
 **Document Processing:**

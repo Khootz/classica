@@ -43,8 +43,8 @@ export interface ReasoningStep {
 export type ReasoningLog = string | ReasoningStep
 
 export interface Citation {
-  doc: string
-  page: number
+  document: string  // Changed from 'doc' to match backend
+  page: string      // Changed from number to string to support "Chunk X" format
 }
 
 export interface ChatAnswer {

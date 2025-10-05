@@ -130,16 +130,38 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
         metrics = analysis.get("summary", {})
         insights = analysis.get("insights", [])
 
+        update_status(chat_id, "searching_documents", 60, "Searching indexed documents")
+
+        # 🔍 3️⃣ RAG: Search indexed documents for relevant context
+        try:
+            rag_context = pathway_rag.get_rag_context(task_id, user_message)
+            context_text = rag_context.get("context", "")
+            rag_sources = rag_context.get("sources", [])
+            citations = [
+                {
+                    "document": source["filename"],
+                    "page": f"Chunk {source['chunk_index']}"
+                }
+                for source in rag_sources
+            ]
+            print(f"✅ RAG found {len(rag_sources)} relevant chunks")
+        except Exception as e:
+            print(f"⚠️ RAG search failed (non-critical): {e}")
+            context_text = ""
+            citations = []
+
         update_status(chat_id, "summarizing", 70, "Generating CFO summary via Gemini")
 
-        # 3️⃣ Create LLM summary using Gemini
+        # 4️⃣ Create LLM summary using Gemini with RAG context
         prompt = [
             {
                 "role": "system",
                 "content": (
-                    "You are a CFO assistant. Given structured financial data and computed ratios, "
-                    "write a concise but insightful summary of the company’s financial health. "
-                    "Highlight key risks, leverage, liquidity, and performance insights clearly."
+                    "You are a CFO assistant. Given structured financial data, computed ratios, "
+                    "and relevant document excerpts, write a concise but insightful summary of "
+                    "the company's financial health. Highlight key risks, leverage, liquidity, "
+                    "and performance insights clearly. When citing information from documents, "
+                    "reference them naturally in your response."
                 ),
             },
             {
@@ -148,7 +170,8 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
                     f"User question: {user_message}\n\n"
                     f"Structured data: {json.dumps(structured_data, indent=2)}\n\n"
                     f"Computed metrics: {json.dumps(metrics, indent=2)}\n\n"
-                    f"Insights: {json.dumps(insights, indent=2)}"
+                    f"Insights: {json.dumps(insights, indent=2)}\n\n"
+                    f"📄 Relevant document excerpts:\n{context_text if context_text else 'No relevant excerpts found.'}"
                 ),
             },
         ]
@@ -156,16 +179,16 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
 
         update_status(chat_id, "saving_results", 90, "Saving CFO agent results")
 
-        # 4️⃣ Save to DB
+        # 5️⃣ Save to DB with citations
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"
         chat_msg.content = summary
         chat_msg.reasoning_log = json.dumps(insights)
-        chat_msg.citations = json.dumps([])
+        chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations
         chat_msg.status = "done"
         session.add(chat_msg)
 
-        # 5️⃣ Create / update memo summary
+        # 6️⃣ Create / update memo summary
         existing_memo = session.exec(select(Memo).where(Memo.task_id == task_id)).first()
         memo_text = summary
         core_metrics = {

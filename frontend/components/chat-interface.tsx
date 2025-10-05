@@ -211,7 +211,7 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                       {message.citations.map((citation, idx) => (
                         <div key={idx} className="text-xs text-white/70 flex items-center gap-1">
                           <ExternalLink className="w-3 h-3" />
-                          {citation.doc} (Page {citation.page})
+                          {citation.document} ({citation.page})
                         </div>
                       ))}
                     </div>

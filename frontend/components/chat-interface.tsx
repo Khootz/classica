@@ -180,19 +180,24 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
               >
                 <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
-                {/* Analysis Steps - Show sub-queries if available */}
+                {/* Analysis Steps - Subtle collapsible sub-queries */}
                 {message.reasoning && typeof message.reasoning === 'object' && !Array.isArray(message.reasoning) && 
                  'sub_queries' in message.reasoning && message.reasoning.sub_queries && message.reasoning.sub_queries.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs font-semibold text-white/70 mb-2">Analysis Steps:</p>
-                    <div className="space-y-1">
+                  <details className="mt-3 group">
+                    <summary className="text-xs text-white/50 hover:text-white/70 cursor-pointer transition-colors list-none flex items-center gap-1.5">
+                      <span className="text-[10px]">▸</span>
+                      <span className="group-open:hidden">Analyzed via {message.reasoning.sub_queries.length} queries</span>
+                      <span className="hidden group-open:inline">Analysis breakdown:</span>
+                    </summary>
+                    <div className="mt-2 ml-3 space-y-1.5 text-xs text-white/60">
                       {message.reasoning.sub_queries.map((query, idx) => (
-                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
-                          • {query}
+                        <div key={idx} className="flex items-start gap-2">
+                          <span className="text-white/40 text-[10px] mt-0.5">{idx + 1}.</span>
+                          <span className="leading-relaxed">{query}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 )}
 
                 {/* Reasoning Log - Only show insights if available and meaningful */}
@@ -261,18 +266,22 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   </div>
                 ) : null}
 
-                {/* Citations */}
+                {/* Citations - Subtle inline display */}
                 {message.citations && message.citations.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs font-semibold text-white/70 mb-2">Sources:</p>
-                    <div className="space-y-1">
-                      {message.citations.map((citation, idx) => (
-                        <div key={idx} className="text-xs text-white/70 flex items-center gap-1">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>{citation.document}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      <span>Sources:</span>
+                    </span>
+                    {[...new Set(message.citations.map(c => c.document))].map((doc, idx) => (
+                      <span 
+                        key={idx}
+                        className="px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                        title={doc}
+                      >
+                        {doc.length > 25 ? `${doc.substring(0, 25)}...` : doc}
+                      </span>
+                    ))}
                   </div>
                 )}
 

@@ -48,15 +48,17 @@ export interface ReasoningData {
 export type ReasoningLog = string | ReasoningStep | ReasoningData
 
 export interface Citation {
-  document: string  // Changed from 'doc' to match backend
+  document: string  // Document filename
   page: string      // Changed from number to string to support "Chunk X" format
+  sub_query?: string  // Optional: Which sub-query found this citation
+  sub_query_index?: number  // Optional: Index of the sub-query
 }
 
 export interface ChatAnswer {
   chat_id: string
   role: "agent" | "user"
   response: string
-  reasoning_log: ReasoningLog[]
+  reasoning_log: ReasoningLog[] | ReasoningData  // Support both new object format and legacy array
   citations: Citation[]
   status?: string
   created_at?: string

@@ -34,7 +34,7 @@ def get_all_chats(task_id: str, session: Session = Depends(get_session)):
             "chat_id": chat.id,
             "role": chat.role,
             "response": chat.content,
-            "reasoning_log": json.loads(chat.reasoning_log or "[]"),
+            "reasoning_log": json.loads(chat.reasoning_log or '{"sub_queries": [], "insights": []}'),
             "citations": json.loads(chat.citations or "[]"),
             "status": chat.status,
             "created_at": chat.created_at.isoformat(),
@@ -97,7 +97,7 @@ def get_chat_result(chat_id: str, session: Session = Depends(get_session)):
         "chat_id": chat.id,
         "role": chat.role,
         "response": chat.content,
-        "reasoning_log": json.loads(chat.reasoning_log or "[]"),
+        "reasoning_log": json.loads(chat.reasoning_log or '{"sub_queries": [], "insights": []}'),
         "citations": json.loads(chat.citations or "[]"),
         "status": chat.status,
     }

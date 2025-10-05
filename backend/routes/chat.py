@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlmodel import Session, select
 import json, uuid
-import asyncio
 
 from database import get_session
 from models import ChatMessage, Memo, Document
@@ -68,10 +67,7 @@ def create_chat(
     session.commit()
 
     # Background processing
-    def run_async_pipeline():
-        asyncio.run(run_agent_pipeline(chat_id, task_id, user_message, session))
-    
-    background_tasks.add_task(run_async_pipeline)
+    background_tasks.add_task(run_agent_pipeline, chat_id, task_id, user_message, session)
 
     return {"chat_id": chat_id, "status": "pending"}
 
@@ -106,7 +102,7 @@ def get_chat_result(chat_id: str, session: Session = Depends(get_session)):
 # ----------------------
 # Background CFO Agent
 # ----------------------
-async def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: Session):
+def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: Session):
     try:
         update_status(chat_id, "loading_data", 10, "Fetching financial data from ADE")
 
@@ -139,7 +135,7 @@ async def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, sess
 
         # 🔍 3️⃣ Multi-Query RAG: Decompose query → retrieve per sub-query → synthesize
         try:
-            rag_result = await multi_query_rag(
+            rag_result = multi_query_rag(
                 query=user_message,
                 task_id=task_id,
                 structured_data=structured_data,
@@ -154,6 +150,7 @@ async def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, sess
             
             print(f"✅ Multi-query RAG: {len(sub_queries)} sub-queries, {len(citations)} citations")
             print(f"📌 Sub-queries: {sub_queries}")
+            print(f"📄 Citations: {citations}")
             
         except Exception as e:
             print(f"⚠️ Multi-query RAG failed, falling back to direct answer: {e}")

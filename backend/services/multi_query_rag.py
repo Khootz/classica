@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 from services import gemini_client
 from services import pathway_rag
 
-async def decompose_query(user_question: str) -> List[str]:
+def decompose_query(user_question: str) -> List[str]:
     """
     Use Gemini to break down complex question into specific sub-queries
     """
@@ -52,7 +52,7 @@ Sub-questions:"""
         return [user_question]  # Fallback to original question
 
 
-async def multi_query_rag(user_question: str, task_id: str, structured_data: dict = None, metrics: dict = None, insights: list = None) -> Dict[str, Any]:
+def multi_query_rag(user_question: str, task_id: str, structured_data: dict = None, metrics: dict = None, insights: list = None) -> Dict[str, Any]:
     """
     Multi-query RAG pipeline:
     1. Decompose question into sub-queries
@@ -72,7 +72,7 @@ async def multi_query_rag(user_question: str, task_id: str, structured_data: dic
     
     # Step 1: Decompose into sub-queries
     print(f"🔍 Decomposing query: {user_question}")
-    sub_queries = await decompose_query(user_question)
+    sub_queries = decompose_query(user_question)
     print(f"📋 Generated {len(sub_queries)} sub-queries: {sub_queries}")
     
     # Step 2: Retrieve context for each sub-query

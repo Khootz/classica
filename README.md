@@ -1,19 +1,53 @@
 # Diligent 🔍
 
-**AI-Powered Financial Document Analysis Assistant**
+**AI-Powered M&A Due Diligence Assistant**
 
-Diligent extracts structured financial data from PDFs, computes key metrics, and generates AI-powered summaries. Built for financial analysts and deal teams who need quick insights from financial documents.
+Diligent assists deal teams by extracting structured data from financial documents, performing semantic search across datarooms, and providing AI-generated insights with full citations. Built for analysts who need fast document review with transparent, verifiable sources.
 
-> **Important:** This tool assists analysts—it does not replace human judgment or comprehensive due diligence. Always verify outputs with source documents.
+> **⚠️ Important:** This tool **assists** analysts—it does **not** replace human judgment or comprehensive due diligence. Every answer must be verified against the cited source documents. This is an analytical aid, not a decision-making system.
 
 ---
 
 ## 🎬 Demo
 
-### Video Walkthrough
-[![Watch the Demo](https://img.shields.io/badge/▶️-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
+[![Watch Demo](https://img.shields.io/badge/▶️-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
 
-*Click above to watch a full walkthrough of Diligent in action*
+---
+
+## � Use Cases We Cover
+
+**What This Tool Does:**
+
+1. **10-Q/10-K Report Analysis**
+   - Extracts 39 financial fields (revenue, EBITDA, debt, margins, cash flow, etc.)
+   - Computes 5 financial ratios (D/E, net margin, ROE, debt coverage)
+   - Retrieves specific sections with citations (document name + chunk location)
+
+2. **CIM Review**
+   - Extracts market size, growth rates, customer concentration
+   - Finds operational KPIs (CAC, LTV, churn, market share)
+   - Searches across multiple sections with semantic matching
+
+3. **Contract Search & Extraction**
+   - Locates change-of-control clauses
+   - Finds assignment provisions and key dates
+   - Returns exact document location with page/chunk reference
+
+4. **Portfolio Dataroom Analysis**
+   - Batch processes multiple documents
+   - Cross-document question answering
+   - Tracks citations across entire dataroom
+
+5. **Risk Factor Identification**
+   - Extracts customer concentration, regulatory risks, litigation
+   - Flags threshold violations (high debt, low margins)
+   - Provides cited evidence for each finding
+
+**What This Tool Does NOT Do:**
+- ❌ Full document summarization (use structured data store for summaries)
+- ❌ Period-over-period trend analysis (single snapshot only)
+- ❌ Replace analyst judgment or comprehensive due diligence
+- ❌ Legal contract analysis or advice
 
 ---
 
@@ -21,81 +55,107 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 
 ![Architecture Diagram](./docs/architecture.png)
 
-### System Overview
+### Data Flow (One Paragraph)
 
-**Upload → Extract → Normalize → Analyze → Chat → Export**
-
-1. **Upload:** User uploads PDF through Next.js frontend
-2. **Extract:** Backend sends to LandingAI ADE → Returns structured JSON + markdown
-3. **Normalize:** Pathway processes data, handles missing values, computes ratios
-4. **Analyze:** Finance logic applies threshold rules → Generates insights
-5. **Chat:** Gemini AI generates summaries from structured metrics
-6. **Store:** SQLite database stores all data (documents, chats, memos)
-7. **Export:** ReportLab generates PDF memos
-
----
-
-## What This Actually Does
-
-**Document Processing:**
-- Uploads PDF files to the system
-- Uses LandingAI ADE to parse PDFs and extract 8 structured fields: Company Name, Revenue, Total Debt, Equity, Cash Flow, Net Income, EBITDA, Operating Income
-- Stores extracted data and markdown conversion in SQLite database
-
-**Financial Analysis:**
-- Pathway normalizes extracted data and computes 5 financial ratios:
-  - Debt-to-Equity ratio
-  - Debt-to-Revenue ratio
-  - Net Margin (%)
-  - Return on Equity (ROE %)
-  - Cash Flow to Debt coverage
-- Generates rule-based insights (leverage warnings, profitability flags, liquidity alerts)
-
-**AI Chat Interface:**
-- Ask questions about uploaded documents
-- Gemini AI generates natural language summaries from structured metrics
-- Returns reasoning steps showing which rules triggered
-- **Note:** No citation tracking to specific pages/tables—responses are based on aggregated structured data
-
-**Memo Export:**
-- Creates a PDF memo with executive summary and key metrics
-- Exports to local file system (no cloud storage)
-
----
-
-## Actual Use Cases (Limited Scope)
-
-1. **Quick financial extraction from 10-Ks/10-Qs** – If the document contains the 8 fields in extractable format
-2. **Leverage and liquidity screening** – Rule-based flags for debt ratios and cash flow coverage
-3. **Batch processing** – Upload multiple financial PDFs to one dataroom, get aggregated metrics
-4. **Export summary memos** – Generate PDF reports with extracted metrics
+Upload sends PDFs to **LandingAI ADE** for parsing and structured field extraction (39 fields). **Marker** converts PDFs to markdown. **Pathway** normalizes extracted data and computes financial metrics. Text is chunked (1000 chars, 200 overlap) and indexed with **semantic embeddings** (sentence-transformers). Chat queries read from this indexed store: Gemini decomposes questions into sub-queries, **hybrid RAG** (70% semantic, 30% keyword) retrieves relevant chunks per sub-query, and Gemini synthesizes answers from structured data + retrieved spans. All citations include document name, chunk index, and sub-query attribution.
 
 ---
 
 ## Tech Stack
 
 **Frontend:**
-- Next.js 15 + React 19 + TypeScript
-- Tailwind CSS + Radix UI
+- Next.js 14 + React 19 + TypeScript
+- Tailwind CSS + shadcn/ui components
+- Lucide Icons
 
 **Backend:**
 - FastAPI + SQLModel (SQLite)
-- LandingAI ADE for PDF parsing and field extraction
-- Pathway for data normalization and ratio computation
-- Google Gemini AI (`gemini-2.5-flash`) for natural language summaries
-- ReportLab for PDF export
+- **LandingAI ADE** – PDF parsing + 39-field structured extraction
+- **Marker** – PDF to Markdown conversion
+- **Pathway** – Data normalization + financial ratio computation
+- **sentence-transformers** – Semantic embeddings (all-MiniLM-L6-v2, 384-dim)
+- **Google Gemini AI** (`gemini-1.5-flash`) – Query decomposition + answer synthesis
+- **ReportLab** – PDF export
+
+**RAG System:**
+- Hybrid indexing (semantic + keyword)
+- Multi-query decomposition
+- Citation tracking with sub-query attribution
+- JSON-based index storage (`pathway_index/*.json`)
 
 ---
 
 ## Architecture & Data Flow
 
-1. **Upload:** User uploads PDF via frontend
-2. **Parse:** Backend sends PDF to LandingAI ADE → Returns markdown + JSON with 8 fields
-3. **Normalize:** Pathway ingests ADE JSON, handles missing values, computes 5 ratios
-4. **Analyze:** Finance logic applies threshold rules → Generates insight strings (⚠️/✅)
-5. **Chat:** User asks question → Gemini receives structured metrics + insights → Returns summary
-6. **Store:** All data saved to SQLite (`Document`, `ChatMessage`, `Memo` tables)
-7. **Export:** ReportLab generates PDF from memo text and metrics JSON
+### **Upload Pipeline**
+```
+User uploads PDF
+    ↓
+Save to ./data_rooms/{task_id}/{filename}
+    ↓
+Parse with Marker → Markdown text
+    ↓
+Extract with LandingAI ADE → 39 fields (JSON)
+    ↓
+Compute metrics with Pathway → 5 ratios
+    ↓
+Generate rule-based insights → ⚠️/✅ flags
+    ↓
+Index for RAG:
+  • Chunk text (1000 chars, 200 overlap)
+  • Generate embeddings (all-MiniLM-L6-v2)
+  • Save to pathway_index/{task_id}_index.json
+    ↓
+Store in SQLite:
+  • documents table: filename, filepath, markdown, extraction_json (39 fields)
+```
+
+### **Chat Pipeline (Multi-Query RAG)**
+```
+User asks: "What are the financial risks?"
+    ↓
+Save question to chat_messages (status=pending)
+    ↓
+[BACKGROUND TASK]
+    ↓
+Load structured data from SQL (39 fields)
+    ↓
+Compute metrics with Pathway (5 ratios)
+    ↓
+Generate insights (threshold rules)
+    ↓
+Multi-Query RAG:
+  1. Decompose query with Gemini → 3-5 sub-queries
+     ["What is debt ratio?", "What are liquidity risks?", "What regulatory issues?"]
+  
+  2. For EACH sub-query:
+     • Load RAG index (pathway_index/{task_id}_index.json)
+     • Semantic search: cosine similarity (70%)
+     • Keyword search: term frequency (30%)
+     • Return top 5 chunks with metadata
+  
+  3. Collect citations:
+     [{document: "10-Q.pdf", page: "Chunk 5", sub_query: "What is debt ratio?", ...}]
+  
+  4. Synthesize with Gemini:
+     • Structured data (39 fields)
+     • Computed metrics (5 ratios)
+     • Rule insights
+     • Retrieved chunks (grouped by sub-query)
+     ↓
+     Comprehensive answer in plain text
+    ↓
+Save to chat_messages:
+  • content: answer text
+  • reasoning_log: {sub_queries: [...], insights: [...]}
+  • citations: [{document, page, sub_query, index}]
+  • status: "done"
+    ↓
+Frontend displays:
+  • Answer text
+  • ▸ Analyzed via N queries (collapsible)
+  • 📄 Sources: [doc1.pdf] [doc2.pdf] (pills)
+```
 
 
 ---

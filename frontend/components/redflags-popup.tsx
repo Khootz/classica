@@ -45,18 +45,18 @@ export function RedFlagsPopup({ open, onClose, documents, taskName }: RedFlagsPo
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4 p-4 bg-accent/50 rounded-lg">
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">{documents.length}</p>
-              <p className="text-xs text-white/70">Documents Analyzed</p>
+              <p className="text-2xl font-bold text-foreground">{documents.length}</p>
+              <p className="text-xs text-muted-foreground">Documents Analyzed</p>
             </div>
             <div className="text-center">
               <p className={`text-2xl font-bold ${hasRedFlags ? "text-yellow-500" : "text-green-600"}`}>
                 {totalRedFlags}
               </p>
-              <p className="text-xs text-white/70">Red Flags Found</p>
+              <p className="text-xs text-muted-foreground">Red Flags Found</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">{taskName || "N/A"}</p>
-              <p className="text-xs text-white/70">Dataroom</p>
+              <p className="text-2xl font-bold text-foreground">{taskName || "N/A"}</p>
+              <p className="text-xs text-muted-foreground">Dataroom</p>
             </div>
           </div>
 
@@ -68,8 +68,8 @@ export function RedFlagsPopup({ open, onClose, documents, taskName }: RedFlagsPo
                   <div className="flex items-start gap-3 mb-3">
                     <FileText className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{doc.filename}</p>
-                      <p className="text-xs text-white/70 mt-1">
+                      <p className="text-sm font-medium text-foreground truncate">{doc.filename}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
                         {doc.redFlags.length === 0 ? (
                           <span className="text-green-600 flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" />
@@ -87,7 +87,7 @@ export function RedFlagsPopup({ open, onClose, documents, taskName }: RedFlagsPo
 
                   {/* Summary */}
                   {doc.summary && (
-                    <div className="mb-3 p-3 bg-accent/30 rounded text-xs text-white/90 whitespace-pre-wrap">
+                    <div className="mb-3 p-3 bg-accent/30 rounded text-xs text-foreground whitespace-pre-wrap">
                       {doc.summary}
                     </div>
                   )}
@@ -95,11 +95,11 @@ export function RedFlagsPopup({ open, onClose, documents, taskName }: RedFlagsPo
                   {/* Red Flags List */}
                   {doc.redFlags.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-white/70">Critical Issues:</p>
+                      <p className="text-xs font-semibold text-muted-foreground">Critical Issues:</p>
                       {doc.redFlags.map((flag, flagIndex) => (
                         <div key={flagIndex} className="flex items-start gap-2 text-xs">
                           <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                          <span className="text-white/90">{flag}</span>
+                          <span className="text-foreground">{flag}</span>
                         </div>
                       ))}
                     </div>

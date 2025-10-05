@@ -5,7 +5,7 @@ import asyncio
 
 from database import get_session
 from models import ChatMessage, Memo, Document
-from services import gemini_client, finance_logic, pathway_rag
+from services import gemini_client, finance_logic
 from services.multi_query_rag import multi_query_rag
 
 router = APIRouter()

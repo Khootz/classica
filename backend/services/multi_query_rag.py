@@ -6,7 +6,8 @@ and synthesizes comprehensive answers with citations
 
 import json
 from typing import List, Dict, Any
-from services import gemini_client, pathway_rag
+from services import gemini_client
+from services import pathway_rag
 
 async def decompose_query(user_question: str) -> List[str]:
     """

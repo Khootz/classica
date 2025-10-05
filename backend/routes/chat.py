@@ -154,8 +154,18 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
             
         except Exception as e:
             print(f"⚠️ Multi-query RAG failed, falling back to direct answer: {e}")
+            import traceback
+            traceback.print_exc()
             
             # Fallback: Direct Gemini answer without RAG
+            # Still try to decompose query to show analysis steps
+            from services.multi_query_rag import decompose_query
+            try:
+                sub_queries = decompose_query(user_message)
+            except:
+                sub_queries = [user_message]  # Ultimate fallback
+            
+            citations = []
             update_status(chat_id, "summarizing", 70, "Generating CFO summary via Gemini")
             
             prompt = [
@@ -180,8 +190,6 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
                 },
             ]
             summary = gemini_client.ask_gemini(prompt)
-            sub_queries = []
-            citations = []
             rag_reasoning = ""
 
         update_status(chat_id, "saving_results", 90, "Saving CFO agent results")

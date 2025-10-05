@@ -4,7 +4,7 @@ import os, json, shutil
 
 from database import get_session
 from models import Document
-from services import landing_ai, pathway_client, finance_logic
+from services import landing_ai, pathway_client, finance_logic, pathway_rag
 
 router = APIRouter()
 UPLOAD_DIR = "./uploads"
@@ -81,7 +81,26 @@ async def upload_document(
     session.refresh(doc)
 
     # ---------------------------------------------------
-    # ✅ 7️⃣ Return a rich response
+    # 🔍 7️⃣ Index document for RAG (Hybrid Indexing)
+    # ---------------------------------------------------
+    try:
+        pathway_rag.index_document(
+            task_id=task_id,
+            doc_id=doc.id,
+            markdown=markdown,
+            extraction_json=extraction_json,
+            metadata={
+                "filename": file.filename,
+                "doc_id": doc.id,
+                "file_path": file_path
+            }
+        )
+        print(f"✅ Document {file.filename} indexed for RAG")
+    except Exception as e:
+        print(f"⚠️ RAG indexing failed (non-critical): {e}")
+
+    # ---------------------------------------------------
+    # ✅ 8️⃣ Return a rich response
     # ---------------------------------------------------
     return {
         "id": doc.id,

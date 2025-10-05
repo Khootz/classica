@@ -197,17 +197,19 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
-                      {message.reasoning.map((step, idx) => {
-                        // Skip empty entries
-                        if (typeof step === 'string' && !step.trim()) return null;
-                        if (typeof step === 'object' && !step.step && !step.value) return null;
-                        
-                        return (
-                          <div key={idx} className="text-xs text-white/90 leading-relaxed">
-                            {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
-                          </div>
-                        );
-                      })}
+                      {message.reasoning.filter(step => {
+                        if (typeof step === 'string') {
+                          const trimmed = step.trim();
+                          if (!trimmed) return false;
+                          const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
+                          return hasMetrics;
+                        }
+                        return !!(step.step || step.value);
+                      }).map((step, idx) => (
+                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
+                          {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -221,9 +223,6 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                         <div key={idx} className="text-xs text-white/70 flex items-center gap-1">
                           <ExternalLink className="w-3 h-3" />
                           <span>{citation.document}</span>
-                          {citation.page && citation.page !== 'Financial Data' && (
-                            <span className="text-white/50">({citation.page})</span>
-                          )}
                         </div>
                       ))}
                     </div>

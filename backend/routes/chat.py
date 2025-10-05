@@ -196,8 +196,11 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"
         chat_msg.content = summary
-        # Filter out empty insights
-        valid_insights = [i for i in insights if i and str(i).strip()]
+        # Filter out empty insights and generic "no metrics" messages
+        valid_insights = [
+            i for i in insights 
+            if i and str(i).strip() and "No valid financial metrics found" not in str(i)
+        ]
         chat_msg.reasoning_log = json.dumps(valid_insights)
         chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations
         chat_msg.status = "done"

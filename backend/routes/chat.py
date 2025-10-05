@@ -172,7 +172,9 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
                     "the company's financial health. Highlight key risks, leverage, liquidity, "
                     "and performance insights clearly. IMPORTANT: Always reference the source documents "
                     "in your response. Use natural citations like 'According to the 10-Q report...' or "
-                    "'The financial statements show...'. Every major claim should cite its source."
+                    "'The financial statements show...'. Every major claim should cite its source. "
+                    "CRITICAL: Output PLAIN TEXT ONLY. Do not use markdown formatting, asterisks, "
+                    "hashtags, or any special formatting. Write in normal sentences."
                 ),
             },
             {

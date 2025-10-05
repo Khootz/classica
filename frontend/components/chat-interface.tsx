@@ -181,16 +181,19 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                 <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
                 {/* Reasoning Log - Only show if there are meaningful financial insights */}
-                {message.reasoning && message.reasoning.length > 0 && message.reasoning.some(step => {
-                  if (typeof step === 'string') {
-                    const trimmed = step.trim();
-                    if (!trimmed) return false;
-                    // Only show reasoning if it contains actual financial metrics/insights
-                    const hasMetrics = /(\d+%|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|\$|₹|€|£)/i.test(trimmed);
-                    return hasMetrics;
-                  }
-                  return step.step || step.value;
-                }) && (
+                {message.reasoning && message.reasoning.length > 0 && (() => {
+                  const validSteps = message.reasoning.filter(step => {
+                    if (typeof step === 'string') {
+                      const trimmed = step.trim();
+                      if (!trimmed) return false;
+                      // Only show reasoning if it contains actual financial metrics/insights
+                      const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
+                      return hasMetrics;
+                    }
+                    return !!(step.step || step.value);
+                  });
+                  return validSteps.length > 0;
+                })() && (
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
@@ -217,7 +220,10 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
                       {message.citations.map((citation, idx) => (
                         <div key={idx} className="text-xs text-white/70 flex items-center gap-1">
                           <ExternalLink className="w-3 h-3" />
-                          {citation.document} ({citation.page})
+                          <span>{citation.document}</span>
+                          {citation.page && citation.page !== 'Financial Data' && (
+                            <span className="text-white/50">({citation.page})</span>
+                          )}
                         </div>
                       ))}
                     </div>

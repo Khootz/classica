@@ -155,7 +155,7 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
             citations = [
                 {
                     "document": d.filename,
-                    "page": "Financial Data"
+                    "page": ""
                 }
                 for d in docs[:3]  # Show up to 3 documents as sources
             ]
@@ -196,7 +196,9 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"
         chat_msg.content = summary
-        chat_msg.reasoning_log = json.dumps(insights)
+        # Filter out empty insights
+        valid_insights = [i for i in insights if i and str(i).strip()]
+        chat_msg.reasoning_log = json.dumps(valid_insights)
         chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations
         chat_msg.status = "done"
         session.add(chat_msg)

@@ -63,26 +63,12 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 
 ---
 
-## What This Does NOT Do
-
-- **No RAG or vector search** – Does not retrieve specific clauses, facts, or text snippets from documents
-- **No multi-document summarization** – Cannot synthesize insights across multiple PDFs
-- **No contract analysis** – Cannot extract clauses, change-of-control provisions, or legal terms
-- **No patent/CIM/pitch deck parsing** – Only extracts the 8 predefined financial fields listed above
-- **No citations** – Cannot point to specific pages, tables, or text spans in source documents
-- **No VDR integration** – Does not connect to enterprise document management systems
-- **No watched folders** – Must manually upload files through the web UI
-
----
-
 ## Actual Use Cases (Limited Scope)
 
 1. **Quick financial extraction from 10-Ks/10-Qs** – If the document contains the 8 fields in extractable format
 2. **Leverage and liquidity screening** – Rule-based flags for debt ratios and cash flow coverage
 3. **Batch processing** – Upload multiple financial PDFs to one dataroom, get aggregated metrics
 4. **Export summary memos** – Generate PDF reports with extracted metrics
-
-**Not suitable for:** Contract review, patent analysis, comprehensive due diligence, or any task requiring retrieval of specific text from documents.
 
 ---
 
@@ -99,8 +85,6 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 - Google Gemini AI (`gemini-2.5-flash`) for natural language summaries
 - ReportLab for PDF export
 
-**No embeddings, no vector database, no retrieval system.**
-
 ---
 
 ## Architecture & Data Flow
@@ -113,7 +97,6 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 6. **Store:** All data saved to SQLite (`Document`, `ChatMessage`, `Memo` tables)
 7. **Export:** ReportLab generates PDF from memo text and metrics JSON
 
-**Key limitation:** No indexing of document text. Cannot answer "Where does it say X?" or "Show me the clause about Y."
 
 ---
 
@@ -125,7 +108,6 @@ Diligent extracts structured financial data from PDFs, computes key metrics, and
 | **Google Gemini AI** | Natural language summary generation | Free tier: 15 req/min |
 | **Pathway** | Data normalization and metric computation | Free (local library) |
 
-**Disclaimer:** AI-generated summaries may be inaccurate. Always verify with source documents. No citations are provided to trace answers back to specific content.
 
 ---
 

@@ -194,6 +194,18 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
 
         update_status(chat_id, "saving_results", 90, "Saving CFO agent results")
 
+        # 🔍 If no citations from RAG, add document-level citations as fallback
+        if not citations and docs:
+            citations = [
+                {
+                    "document": doc.filename,
+                    "page": "",
+                    "sub_query": "Source document",
+                    "sub_query_index": 0
+                }
+                for doc in docs[:5]  # Show up to 5 documents
+            ]
+
         # 5️⃣ Save to DB with citations and sub-queries
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"

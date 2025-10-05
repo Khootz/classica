@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlmodel import Session, select
 import json, uuid
+import asyncio
 
 from database import get_session
 from models import ChatMessage, Memo, Document
 from services import gemini_client, finance_logic, pathway_rag
+from services.multi_query_rag import multi_query_rag
 
 router = APIRouter()
 
@@ -66,7 +68,10 @@ def create_chat(
     session.commit()
 
     # Background processing
-    background_tasks.add_task(run_agent_pipeline, chat_id, task_id, user_message, session)
+    def run_async_pipeline():
+        asyncio.run(run_agent_pipeline(chat_id, task_id, user_message, session))
+    
+    background_tasks.add_task(run_async_pipeline)
 
     return {"chat_id": chat_id, "status": "pending"}
 
@@ -101,7 +106,7 @@ def get_chat_result(chat_id: str, session: Session = Depends(get_session)):
 # ----------------------
 # Background CFO Agent
 # ----------------------
-def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: Session):
+async def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: Session):
     try:
         update_status(chat_id, "loading_data", 10, "Fetching financial data from ADE")
 
@@ -130,72 +135,70 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
         metrics = analysis.get("summary", {})
         insights = analysis.get("insights", [])
 
-        update_status(chat_id, "searching_documents", 60, "Searching indexed documents")
+        update_status(chat_id, "searching_documents", 60, "Searching indexed documents with multi-query RAG")
 
-        # 🔍 3️⃣ RAG: Search indexed documents for relevant context
+        # 🔍 3️⃣ Multi-Query RAG: Decompose query → retrieve per sub-query → synthesize
         try:
-            rag_context = pathway_rag.get_rag_context(task_id, user_message)
-            context_text = rag_context.get("context", "")
-            rag_sources = rag_context.get("sources", [])
-            citations = [
-                {
-                    "document": source["filename"],
-                    "page": f"Chunk {source['chunk_index']}"
-                }
-                for source in rag_sources
-            ]
-            print(f"✅ RAG found {len(rag_sources)} relevant chunks")
+            rag_result = await multi_query_rag(
+                query=user_message,
+                task_id=task_id,
+                structured_data=structured_data,
+                metrics=metrics,
+                insights=insights
+            )
+            
+            summary = rag_result["answer"]
+            sub_queries = rag_result.get("sub_queries", [])
+            citations = rag_result.get("citations", [])
+            rag_reasoning = rag_result.get("reasoning", "")
+            
+            print(f"✅ Multi-query RAG: {len(sub_queries)} sub-queries, {len(citations)} citations")
+            print(f"📌 Sub-queries: {sub_queries}")
+            
         except Exception as e:
-            print(f"⚠️ RAG search failed (non-critical): {e}")
-            context_text = ""
-            citations = []
-        
-        # If no RAG citations but we have docs, add document-level citations
-        if not citations and docs:
-            citations = [
+            print(f"⚠️ Multi-query RAG failed, falling back to direct answer: {e}")
+            
+            # Fallback: Direct Gemini answer without RAG
+            update_status(chat_id, "summarizing", 70, "Generating CFO summary via Gemini")
+            
+            prompt = [
                 {
-                    "document": d.filename,
-                    "page": ""
-                }
-                for d in docs[:3]  # Show up to 3 documents as sources
+                    "role": "system",
+                    "content": (
+                        "You are a CFO assistant. Given structured financial data, computed ratios, "
+                        "write a concise but insightful summary of the company's financial health. "
+                        "Highlight key risks, leverage, liquidity, and performance insights clearly. "
+                        "CRITICAL: Output PLAIN TEXT ONLY. Do not use markdown formatting, asterisks, "
+                        "hashtags, or any special formatting. Write in normal sentences."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"User question: {user_message}\n\n"
+                        f"Structured data: {json.dumps(structured_data, indent=2)}\n\n"
+                        f"Computed metrics: {json.dumps(metrics, indent=2)}\n\n"
+                        f"Insights: {json.dumps(insights, indent=2)}"
+                    ),
+                },
             ]
-
-        update_status(chat_id, "summarizing", 70, "Generating CFO summary via Gemini")
-
-        # 4️⃣ Create LLM summary using Gemini with RAG context
-        prompt = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a CFO assistant. Given structured financial data, computed ratios, "
-                    "and relevant document excerpts, write a concise but insightful summary of "
-                    "the company's financial health. Highlight key risks, leverage, liquidity, "
-                    "and performance insights clearly. IMPORTANT: Always reference the source documents "
-                    "in your response. Use natural citations like 'According to the 10-Q report...' or "
-                    "'The financial statements show...'. Every major claim should cite its source. "
-                    "CRITICAL: Output PLAIN TEXT ONLY. Do not use markdown formatting, asterisks, "
-                    "hashtags, or any special formatting. Write in normal sentences."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User question: {user_message}\n\n"
-                    f"Structured data: {json.dumps(structured_data, indent=2)}\n\n"
-                    f"Computed metrics: {json.dumps(metrics, indent=2)}\n\n"
-                    f"Insights: {json.dumps(insights, indent=2)}\n\n"
-                    f"📄 Relevant document excerpts:\n{context_text if context_text else 'No relevant excerpts found.'}"
-                ),
-            },
-        ]
-        summary = gemini_client.ask_gemini(prompt)
+            summary = gemini_client.ask_gemini(prompt)
+            sub_queries = []
+            citations = []
+            rag_reasoning = ""
 
         update_status(chat_id, "saving_results", 90, "Saving CFO agent results")
 
-        # 5️⃣ Save to DB with citations
+        # 5️⃣ Save to DB with citations and sub-queries
         chat_msg = session.get(ChatMessage, chat_id)
         chat_msg.role = "agent"
         chat_msg.content = summary
+        
+        # Build reasoning log with sub-queries and insights
+        reasoning_data = {
+            "sub_queries": sub_queries,
+            "insights": []
+        }
         
         # Filter out empty insights and generic "no metrics" messages
         valid_insights = [
@@ -214,8 +217,11 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
             for insight in valid_insights
         )
         
-        chat_msg.reasoning_log = json.dumps(valid_insights if has_financial_content else [])
-        chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations
+        if has_financial_content:
+            reasoning_data["insights"] = valid_insights
+        
+        chat_msg.reasoning_log = json.dumps(reasoning_data)
+        chat_msg.citations = json.dumps(citations)  # 🆕 Save RAG citations with sub_query tracking
         chat_msg.status = "done"
         session.add(chat_msg)
 

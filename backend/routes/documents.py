@@ -5,25 +5,10 @@ import os, json, shutil
 from database import get_session
 from models import Document
 from services import landing_ai, pathway_client, finance_logic, pathway_rag
+from services.extraction_schema import COMPREHENSIVE_SCHEMA, categorize_extraction
 
 router = APIRouter()
 UPLOAD_DIR = "./uploads"
-
-# Default schema for ADE extract
-DEFAULT_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "Company": {"type": "string"},
-        "Revenue": {"type": "string"},
-        "TotalDebt": {"type": "string"},
-        "Equity": {"type": "string"},
-        "CashFlow": {"type": "string"},
-        "NetIncome": {"type": "string"},
-        "EBITDA": {"type": "string"},
-        "OperatingIncome": {"type": "string"}
-    },
-    "required": ["Revenue", "TotalDebt", "Equity"]
-}
 
 
 # -----------------------
@@ -46,12 +31,17 @@ async def upload_document(
     parsed = landing_ai.parse_pdf(file_path)
     markdown = parsed.get("markdown", "")
 
-    # 3️⃣ ADE extract → structured JSON
-    extraction = landing_ai.extract_from_markdown(markdown, DEFAULT_SCHEMA)
+    # 3️⃣ ADE extract → structured JSON (using comprehensive 39-field schema)
+    extraction = landing_ai.extract_from_markdown(markdown, COMPREHENSIVE_SCHEMA)
     extraction_json = extraction.get("extraction", {})
+    
+    # Categorize the extraction by domain (financial, company, deal, risk, operational)
+    categorized_data = categorize_extraction(extraction_json)
+    
     import json
     print("\n🚀 Raw ADE Response:", json.dumps(extraction, indent=2))
     print("🧩 ADE Extraction JSON:", json.dumps(extraction_json, indent=2))
+    print("📊 Categorized Data:", json.dumps(categorized_data, indent=2))
 
     # ---------------------------------------------------
     # 🧩 4️⃣ Pathway pipeline: compute financial metrics

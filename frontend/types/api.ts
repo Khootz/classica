@@ -40,7 +40,12 @@ export interface ReasoningStep {
   value: string
 }
 
-export type ReasoningLog = string | ReasoningStep
+export interface ReasoningData {
+  sub_queries?: string[]
+  insights?: string[]
+}
+
+export type ReasoningLog = string | ReasoningStep | ReasoningData
 
 export interface Citation {
   document: string  // Changed from 'doc' to match backend

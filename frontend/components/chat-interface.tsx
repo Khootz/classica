@@ -7,14 +7,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { FileText, Upload, Send, AlertCircle, CheckCircle2, ExternalLink } from "lucide-react"
 import { chatApi, pollChatStatus } from "@/lib/api"
-import type { ChatAnswer, Citation, ReasoningLog } from "@/types/api"
+import type { ChatAnswer, Citation, ReasoningLog, ReasoningData, ReasoningStep } from "@/types/api"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
   timestamp: Date
-  reasoning?: ReasoningLog[]
+  reasoning?: ReasoningLog[] | ReasoningData
   citations?: Citation[]
 }
 
@@ -180,36 +180,81 @@ export function ChatInterface({ selectedDataroom, onShowDocuments, onShowUpload,
               >
                 <p className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "" : "text-white"}`}>{message.content}</p>
 
-                {/* Reasoning Log - Only show if there are meaningful financial insights */}
-                {message.reasoning && message.reasoning.length > 0 && (() => {
-                  const validSteps = message.reasoning.filter(step => {
-                    if (typeof step === 'string') {
-                      const trimmed = step.trim();
-                      if (!trimmed || trimmed.length < 5) return false;
-                      if (trimmed.includes('No valid financial metrics')) return false;
-                      if (trimmed.includes('Could not process')) return false;
-                      // Only show reasoning if it contains actual financial metrics/insights
-                      const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
-                      return hasMetrics;
-                    }
-                    return !!(step.step || step.value);
+                {/* Analysis Steps - Show sub-queries if available */}
+                {message.reasoning && typeof message.reasoning === 'object' && !Array.isArray(message.reasoning) && 
+                 'sub_queries' in message.reasoning && message.reasoning.sub_queries && message.reasoning.sub_queries.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs font-semibold text-white/70 mb-2">Analysis Steps:</p>
+                    <div className="space-y-1">
+                      {message.reasoning.sub_queries.map((query, idx) => (
+                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
+                          • {query}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reasoning Log - Only show insights if available and meaningful */}
+                {message.reasoning && typeof message.reasoning === 'object' && !Array.isArray(message.reasoning) && 
+                 'insights' in message.reasoning && message.reasoning.insights && message.reasoning.insights.length > 0 && (() => {
+                  const validSteps = message.reasoning.insights.filter(step => {
+                    const trimmed = step.trim();
+                    if (!trimmed || trimmed.length < 5) return false;
+                    if (trimmed.includes('No valid financial metrics')) return false;
+                    if (trimmed.includes('Could not process')) return false;
+                    // Only show reasoning if it contains actual financial metrics/insights
+                    const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
+                    return hasMetrics;
                   });
                   return validSteps.length > 0;
                 })() ? (
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
                     <div className="space-y-1">
-                      {message.reasoning.filter(step => {
+                      {(message.reasoning as ReasoningData).insights!.filter(step => {
+                        const trimmed = step.trim();
+                        if (!trimmed) return false;
+                        const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
+                        return hasMetrics;
+                      }).map((step, idx) => (
+                        <div key={idx} className="text-xs text-white/90 leading-relaxed">
+                          {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Legacy format support - array of reasoning logs */}
+                {message.reasoning && Array.isArray(message.reasoning) && message.reasoning.length > 0 && (() => {
+                  const validSteps = message.reasoning.filter((step: ReasoningLog) => {
+                    if (typeof step === 'string') {
+                      const trimmed = step.trim();
+                      if (!trimmed || trimmed.length < 5) return false;
+                      if (trimmed.includes('No valid financial metrics')) return false;
+                      if (trimmed.includes('Could not process')) return false;
+                      const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
+                      return hasMetrics;
+                    }
+                    return 'step' in step && 'value' in step;
+                  });
+                  return validSteps.length > 0;
+                })() ? (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs font-semibold text-white/70 mb-2">Reasoning:</p>
+                    <div className="space-y-1">
+                      {(message.reasoning as ReasoningLog[]).filter((step: ReasoningLog) => {
                         if (typeof step === 'string') {
                           const trimmed = step.trim();
                           if (!trimmed) return false;
                           const hasMetrics = /(\d+\.?\d*%|\d+\.\d+|ratio|margin|equity|debt|revenue|cash|profit|loss|risk|leverage|ebitda|\$|₹|€|£|⚠️|✅)/i.test(trimmed);
                           return hasMetrics;
                         }
-                        return !!(step.step || step.value);
-                      }).map((step, idx) => (
+                        return 'step' in step && 'value' in step;
+                      }).map((step: ReasoningLog, idx: number) => (
                         <div key={idx} className="text-xs text-white/90 leading-relaxed">
-                          {typeof step === 'string' ? step : `• ${step.step}: ${step.value}`}
+                          {typeof step === 'string' ? step : `• ${(step as ReasoningStep).step}: ${(step as ReasoningStep).value}`}
                         </div>
                       ))}
                     </div>

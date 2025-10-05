@@ -1,10 +1,21 @@
 """
 Pathway Hybrid RAG Implementation
 Combines structured data processing with document retrieval
+Now with semantic search using sentence transformers
 """
 import pathway as pw
 import os
+import numpy as np
 from typing import List, Dict, Any, Optional
+
+# Try to import sentence transformers for embeddings
+try:
+    from sentence_transformers import SentenceTransformer
+    EMBEDDINGS_AVAILABLE = True
+except ImportError:
+    EMBEDDINGS_AVAILABLE = False
+    print("⚠️ sentence-transformers not installed. Using keyword search only.")
+    print("   Install with: pip install sentence-transformers")
 
 
 class HybridRAGIndexer:
@@ -12,29 +23,27 @@ class HybridRAGIndexer:
     Hybrid indexing system that combines:
     1. Structured financial data (ADE extraction)
     2. Full document text chunks (for RAG retrieval)
+    3. Semantic embeddings for better search (if available)
     """
     
     def __init__(self, index_dir: str = "./pathway_index"):
         self.index_dir = index_dir
         os.makedirs(index_dir, exist_ok=True)
         self.embedder = None
-        self.llm = None
         self._initialize_models()
     
     def _initialize_models(self):
-        """Initialize embedder and LLM for RAG"""
-        try:
-            # Use OpenAI-compatible embeddings (can switch to local models)
-            gemini_api_key = os.getenv("GEMINI_API_KEY")
-            if gemini_api_key:
-                # For now, use a simple sentence-based approach
-                # In production, use pathway.xpacks.llm.embedders
-                self.embedder = "simple"  # Placeholder
-                self.llm = "gemini"
-            else:
-                print("⚠️ No GEMINI_API_KEY found, RAG will be limited")
-        except Exception as e:
-            print(f"⚠️ Failed to initialize RAG models: {e}")
+        """Initialize embedding model for semantic search"""
+        if EMBEDDINGS_AVAILABLE:
+            try:
+                # Use lightweight but effective model
+                self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+                print("✅ Initialized semantic search with all-MiniLM-L6-v2")
+            except Exception as e:
+                print(f"⚠️ Failed to load embedding model: {e}")
+                self.embedder = None
+        else:
+            self.embedder = None
     
     def index_document(self, task_id: str, doc_id: str, markdown: str, 
                       extraction_json: Dict[str, Any], metadata: Dict[str, Any]) -> bool:
@@ -55,7 +64,7 @@ class HybridRAGIndexer:
             # Split markdown into chunks for RAG
             chunks = self._chunk_text(markdown)
             
-            # Create index entries
+            # Create index entries with embeddings
             index_entries = []
             for i, chunk in enumerate(chunks):
                 entry = {
@@ -64,6 +73,7 @@ class HybridRAGIndexer:
                     "chunk_id": f"{doc_id}_chunk_{i}",
                     "text": chunk,
                     "type": "text_chunk",
+                    "embedding": self._generate_embedding(chunk),  # Add embedding
                     "metadata": {
                         **metadata,
                         "chunk_index": i,
@@ -73,12 +83,14 @@ class HybridRAGIndexer:
                 index_entries.append(entry)
             
             # Add structured data as a special entry
+            structured_text = self._format_structured_data(extraction_json)
             structured_entry = {
                 "task_id": task_id,
                 "doc_id": doc_id,
                 "chunk_id": f"{doc_id}_structured",
-                "text": self._format_structured_data(extraction_json),
+                "text": structured_text,
                 "type": "structured_data",
+                "embedding": self._generate_embedding(structured_text),  # Add embedding
                 "metadata": {
                     **metadata,
                     "extraction": extraction_json
@@ -95,6 +107,28 @@ class HybridRAGIndexer:
         except Exception as e:
             print(f"❌ Failed to index document {doc_id}: {e}")
             return False
+    
+    def _generate_embedding(self, text: str) -> Optional[List[float]]:
+        """Generate embedding vector for text"""
+        if self.embedder and text:
+            try:
+                embedding = self.embedder.encode(text, convert_to_numpy=True)
+                return embedding.tolist()
+            except Exception as e:
+                print(f"⚠️ Embedding generation failed: {e}")
+                return None
+        return None
+    
+    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+        """Compute cosine similarity between two vectors"""
+        if not vec1 or not vec2:
+            return 0.0
+        try:
+            vec1_np = np.array(vec1)
+            vec2_np = np.array(vec2)
+            return float(np.dot(vec1_np, vec2_np) / (np.linalg.norm(vec1_np) * np.linalg.norm(vec2_np)))
+        except:
+            return 0.0
     
     def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
         """
@@ -162,14 +196,15 @@ class HybridRAGIndexer:
         with open(index_file, 'w') as f:
             json.dump(existing, f, indent=2)
     
-    def search(self, task_id: str, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, task_id: str, query: str, top_k: int = 5, use_semantic: bool = True) -> List[Dict[str, Any]]:
         """
-        Search the index for relevant chunks
+        Search the index for relevant chunks using hybrid search (semantic + keyword)
         
         Args:
             task_id: Task to search within
             query: Search query
             top_k: Number of results to return
+            use_semantic: Use semantic search if embeddings available
         
         Returns:
             List of relevant chunks with scores
@@ -186,27 +221,54 @@ class HybridRAGIndexer:
             with open(index_file, 'r') as f:
                 entries = json.load(f)
             
-            # Simple keyword-based search (can be enhanced with embeddings)
-            query_lower = query.lower()
+            # Generate query embedding for semantic search
+            query_embedding = None
+            if use_semantic and self.embedder:
+                query_embedding = self._generate_embedding(query)
+            
             results = []
+            query_lower = query.lower()
             
             for entry in entries:
                 text = entry.get("text", "").lower()
                 
-                # Simple scoring based on keyword matches
-                score = 0
+                # Keyword-based scoring
+                keyword_score = 0
                 for word in query_lower.split():
                     if len(word) > 3:  # Skip short words
-                        score += text.count(word)
+                        keyword_score += text.count(word)
                 
-                if score > 0:
+                # Semantic scoring (if available)
+                semantic_score = 0.0
+                if query_embedding and entry.get("embedding"):
+                    semantic_score = self._cosine_similarity(query_embedding, entry["embedding"])
+                
+                # Hybrid score: combine semantic (70%) + keyword (30%)
+                if query_embedding and entry.get("embedding"):
+                    # Normalize keyword score to 0-1 range (assuming max 20 occurrences)
+                    normalized_keyword = min(keyword_score / 20.0, 1.0)
+                    final_score = (semantic_score * 0.7) + (normalized_keyword * 0.3)
+                    score_type = "hybrid"
+                else:
+                    # Fall back to keyword only
+                    final_score = keyword_score
+                    score_type = "keyword"
+                
+                if final_score > 0:
                     results.append({
                         **entry,
-                        "score": score
+                        "score": final_score,
+                        "score_type": score_type,
+                        "keyword_score": keyword_score,
+                        "semantic_score": semantic_score
                     })
             
             # Sort by score and return top_k
             results.sort(key=lambda x: x["score"], reverse=True)
+            
+            if results:
+                print(f"🔍 Search mode: {results[0].get('score_type', 'unknown')}")
+            
             return results[:top_k]
             
         except Exception as e:

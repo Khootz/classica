@@ -10,7 +10,7 @@ Diligent assists deal teams by extracting structured data from financial documen
 
 ## 🎬 Demo
 
-[![Watch Demo](https://img.shields.io/badge/▶️-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
+[![Watch Demo](https://img.shields.io/badge/▶️-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/QfwF3Uh10PY)
 
 ---
 

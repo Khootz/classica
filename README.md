@@ -227,11 +227,6 @@ Frontend: `http://localhost:3000`
 4. **Ask Questions** – Type in chat (e.g., "What's the debt-to-equity ratio?")
 5. **Export Memo** – Click "View Summary" → "Export to PDF"
 
-**Limitations:**
-- If ADE cannot extract the required fields, metrics will be zero
-- Chat answers are based on aggregated metrics only, not document content
-- No way to verify which part of the document the data came from
-
 ---
 
 ## Project Structure

@@ -55,7 +55,7 @@ Diligent assists deal teams by extracting structured data from financial documen
 
 ![Architecture Diagram](./docs/architecture.png)
 
-### Data Flow (One Paragraph)
+### Data Flow
 
 Upload sends PDFs to **LandingAI ADE** for parsing and structured field extraction (39 fields). **Marker** converts PDFs to markdown. **Pathway** normalizes extracted data and computes financial metrics. Text is chunked (1000 chars, 200 overlap) and indexed with **semantic embeddings** (sentence-transformers). Chat queries read from this indexed store: Gemini decomposes questions into sub-queries, **hybrid RAG** (70% semantic, 30% keyword) retrieves relevant chunks per sub-query, and Gemini synthesizes answers from structured data + retrieved spans. All citations include document name, chunk index, and sub-query attribution.
 
@@ -74,7 +74,7 @@ Upload sends PDFs to **LandingAI ADE** for parsing and structured field extracti
 - **Marker** – PDF to Markdown conversion
 - **Pathway** – Data normalization + financial ratio computation
 - **sentence-transformers** – Semantic embeddings (all-MiniLM-L6-v2, 384-dim)
-- **Google Gemini AI** (`gemini-1.5-flash`) – Query decomposition + answer synthesis
+- **Google Gemini AI** (`gemini-2.5-flash`) – Query decomposition + answer synthesis
 - **ReportLab** – PDF export
 
 **RAG System:**
@@ -261,113 +261,8 @@ frontend/
   └── lib/api.ts           # API client
 ```
 
----
-
-## Known Issues & Limitations
-
-1. **No retrieval system** – Cannot answer questions about specific clauses, facts, or details from documents
-2. **No citations** – Impossible to verify where extracted data came from in the PDF
-3. **Limited field extraction** – Only 8 hardcoded fields; cannot extract custom fields
-4. **No multi-doc synthesis** – Each document processed independently; no cross-document analysis
-5. **No audit trail** – Cannot track which user made which changes or reviewed which flags
-6. **No human-in-the-loop** – No review queue for accepting/dismissing red flags
-7. **Local-only exports** – PDFs saved to local file system, not cloud storage
-
----
-
 ## License
 
 MIT License
 
 
-
----
-
-## Troubleshooting
-
-**`ModuleNotFoundError`** → Activate venv: `.\venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux), then `pip install -r requirements.txt`
-
-**`Invalid API key`** → Check `backend/.env` has valid `GEMINI_API_KEY` and `LANDINGAI_API_KEY`
-
-**Database errors** → Delete `backend/db/app.db` and restart backend
-
-**Frontend errors** → Run `pnpm install` again, ensure backend is running on port 8000
-
-**Zero metrics returned** → ADE could not extract the required fields from your PDF. Try a different document format or check ADE compatibility.
-
----
-
-## Installation
-
-### Backend Setup
-
-```bash
-cd backend
-python -m venv venv
-
-# Windows
-.\venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-Create `.env` in `backend/`:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-LANDINGAI_API_KEY=your_landingai_api_key_here
-```
-
-Run backend:
-
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-Backend runs at `http://localhost:8000`. API docs at `http://localhost:8000/docs`.
-
----
-
-### Frontend Setup
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
-
-Frontend runs at `http://localhost:3000`.
-
----
-
-## How to Demo
-
-1. Create a new dataroom
-2. Upload 5 sample files (10-Q, CIM, contract, pitch deck, patent)
-3. Ask: *"What are the key financial risks?"*
-4. Drop in a new file mid-demo
-5. Ask a follow-up that depends on the new file: *"Does the new contract have change-of-control provisions?"*
-6. Export the IC memo to PDF
-
----
-
-## Troubleshooting
-
-**`ModuleNotFoundError`** → Activate venv: `.\venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux), then `pip install -r requirements.txt`
-
-**`Invalid API key`** → Check `backend/.env` has valid `GEMINI_API_KEY` and `LANDINGAI_API_KEY`
-
-**Database errors** → Delete `backend/db/app.db` and restart backend
-
-**Frontend errors** → Run `pnpm install` again, ensure backend is running on port 8000
-
-**Zero metrics returned** → ADE could not extract the required fields from your PDF. Try a different document format or check ADE compatibility.
-
----
-
-## License
-
-MIT License

@@ -53,7 +53,7 @@ function ValidationCard({ validation, onClose }: { validation: ValidationResult;
             <p className="text-sm font-medium text-foreground truncate">{validation.filename}</p>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-foreground">
             {validation.status === "validating" && "Running automated document validation..."}
             {validation.status === "success" && "Validation complete"}
             {validation.status === "error" && `Validation failed: ${validation.error}`}

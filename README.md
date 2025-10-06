@@ -23,6 +23,7 @@ Note: Demo video includes all features as of October 5th, 2025
    - Extracts 39 financial fields (revenue, EBITDA, debt, margins, cash flow, etc.)
    - Computes 5 financial ratios (D/E, net margin, ROE, debt coverage)
    - Retrieves specific sections with citations (document name + chunk location)
+   - Investment Committee Memo Generation
 
 2. **CIM Review**
    - Extracts market size, growth rates, customer concentration

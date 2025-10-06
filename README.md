@@ -196,7 +196,10 @@ pip install -r requirements.txt
 
 Create `backend/.env`:
 ```env
+#Enter your Gemini API key
 GEMINI_API_KEY=your_gemini_api_key
+
+#Enter your Landing AI API key
 LANDINGAI_API_KEY=your_landingai_api_key
 ```
 

@@ -43,6 +43,13 @@ def analyze_financials(ade_json):
     ebitda = safe_float(metrics.get("ebitda") or metrics.get("EBITDA"))
     op_income = safe_float(metrics.get("operating_income") or metrics.get("OperatingIncome"))
 
+    # ✅ Check if all financial data is zero/missing
+    if all(val == 0 for val in [revenue, debt, equity, cash_flow, net_income]):
+        return {
+            "summary": {},
+            "insights": []  # Return empty insights to avoid rendering zero-value metrics
+        }
+
     # ✅ Compute ratios
     debt_to_equity = (debt / equity) if equity else 0
     debt_to_revenue = (debt / revenue) if revenue else 0

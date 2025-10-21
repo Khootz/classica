@@ -1,13 +1,25 @@
-import google.generativeai as genai
 import os
+import requests
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-def ask_gemini(messages: list, model="gemini-2.5-flash"):
+def ask_gemini(messages: list, model="google/gemini-2.0-flash-exp:free"):
     """
     messages = [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]
+    Uses OpenRouter API for chat completions
     """
-    resp = genai.GenerativeModel(model).generate_content(
-        [m["content"] for m in messages]
-    )
-    return resp.text
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": model,
+        "messages": messages
+    }
+    
+    resp = requests.post(OPENROUTER_BASE_URL, headers=headers, json=payload)
+    resp.raise_for_status()
+    
+    return resp.json()["choices"][0]["message"]["content"]

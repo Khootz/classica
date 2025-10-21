@@ -1,23 +1,29 @@
-import pathway as pw
+# Mock version for Windows - Pathway doesn't support Windows natively
+# This provides the same functionality without Pathway dependencies
 
+def safe_float(value):
+    """Convert a value to float safely"""
+    if value is None or value == "":
+        return 0.0
+    try:
+        return float(str(value).replace(",", "").replace("$", "").strip())
+    except:
+        return 0.0
 
-# 🧩 Define a schema that matches normalized ADE data
-class AdeSchema(pw.Schema):
-    company: str
-    revenue: float
-    debt: float
-    equity: float
-    cash_flow: float
-    net_income: float
-    ebitda: float
-    operating_income: float
-
+def safe_divide(a, b):
+    """Safely divide two numbers, return 0 if division by zero"""
+    try:
+        if b == 0 or b is None:
+            return 0.0
+        return float(a) / float(b)
+    except:
+        return 0.0
 
 def process_ade_data(ade_json):
     """
-    Converts ADE JSON (single or list) into a Pathway table,
-    computes key financial metrics, and returns clean JSON-safe results.
+    Converts ADE JSON (single or list) and computes key financial metrics.
     Handles variations in field names and ensures schema correctness.
+    Windows-compatible version without Pathway.
     """
     if not ade_json:
         print("⚠️ Empty ADE JSON provided.")
@@ -48,74 +54,33 @@ def process_ade_data(ade_json):
             key = "company"
         normalized[key] = v
 
-    # 2️⃣ Ensure all required keys exist
-    for key in [
-        "company", "revenue", "debt", "equity",
-        "cash_flow", "net_income", "ebitda", "operating_income"
-    ]:
-        normalized.setdefault(key, 0)
+    # 2️⃣ Ensure all required keys exist and convert to floats
+    company = normalized.get("company", "Unknown")
+    revenue = safe_float(normalized.get("revenue", 0))
+    debt = safe_float(normalized.get("debt", 0))
+    equity = safe_float(normalized.get("equity", 0))
+    cash_flow = safe_float(normalized.get("cash_flow", 0))
+    net_income = safe_float(normalized.get("net_income", 0))
+    ebitda = safe_float(normalized.get("ebitda", 0))
+    operating_income = safe_float(normalized.get("operating_income", 0))
 
-    # 3️⃣ Build table from rows using AdeSchema
-    ade_table = pw.debug.table_from_rows(
-        rows=[(
-            normalized["company"],
-            float(str(normalized["revenue"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["debt"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["equity"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["cash_flow"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["net_income"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["ebitda"]).replace(",", "").replace("$", "") or 0),
-            float(str(normalized["operating_income"]).replace(",", "").replace("$", "") or 0),
-        )],
-        schema=AdeSchema
-    )
+    # 3️⃣ Compute derived metrics
+    result = {
+        "company": company,
+        "revenue": revenue,
+        "debt": debt,
+        "equity": equity,
+        "cash_flow": cash_flow,
+        "net_income": net_income,
+        "ebitda": ebitda,
+        "operating_income": operating_income,
+        "debt_to_equity": safe_divide(debt, equity),
+        "debt_to_revenue": safe_divide(debt, revenue),
+        "net_margin": safe_divide(net_income, revenue),
+        "return_on_equity": safe_divide(net_income, equity),
+        "cashflow_to_debt": safe_divide(cash_flow, debt),
+    }
 
-    # 4️⃣ Compute derived metrics
-    processed = ade_table.select(
-        company=pw.this.company,
-        revenue=pw.this.revenue,
-        debt=pw.this.debt,
-        equity=pw.this.equity,
-        cash_flow=pw.this.cash_flow,
-        net_income=pw.this.net_income,
-        ebitda=pw.this.ebitda,
-        operating_income=pw.this.operating_income,
-        debt_to_equity=pw.coalesce(pw.this.debt / pw.this.equity, 0.0),
-        debt_to_revenue=pw.coalesce(pw.this.debt / pw.this.revenue, 0.0),
-        net_margin=pw.coalesce(pw.this.net_income / pw.this.revenue, 0.0),
-        return_on_equity=pw.coalesce(pw.this.net_income / pw.this.equity, 0.0),
-        cashflow_to_debt=pw.coalesce(pw.this.cash_flow / pw.this.debt, 0.0),
-    )
-
-    # 5️⃣ Convert to list of dicts (materialize Pathway output)
-    raw_result = list(pw.debug.table_to_dicts(processed))
-
-    # 6️⃣ Flatten if nested list and clean materialized output
-    flattened = []
-    for row in raw_result:
-        if isinstance(row, list):  # e.g., [[{...}]]
-            flattened.extend(row)
-        else:
-            flattened.append(row)
-
-    clean_result = []
-    for row in flattened:
-        if not isinstance(row, dict):
-            continue
-        clean_row = {}
-        for k, v in row.items():
-            try:
-                # Convert lazy Pathway pointers or complex objects to floats/strings
-                if hasattr(v, "value") or "pathway.engine" in str(type(v)):
-                    clean_row[k] = float(str(v))
-                elif isinstance(v, (float, int)):
-                    clean_row[k] = v
-                else:
-                    val_str = str(v).replace(",", "").replace("$", "").strip()
-                    clean_row[k] = float(val_str) if val_str.replace('.', '', 1).isdigit() else val_str
-            except Exception:
-                clean_row[k] = str(v)
-        clean_result.append(clean_row)
-
-    print("✅ Pathway processed ADE data (flattened + cleaned):", clean_result)
+    clean_result = [result]
+    print("✅ Processed ADE data (Windows-compatible):", clean_result)
     return clean_result

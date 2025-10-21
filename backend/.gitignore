@@ -1,5 +1,24 @@
 # Environment variables
 .env
+.env.local
+.env.production
+
+# Database
+db/
+*.db
+*.sqlite
+
+# Uploads and data
+uploads/
+exports/
+
+# Test files
+create_test_pdf.py
+test_financial_report.pdf
+*.pdf
+
+# Startup scripts (local only)
+start-*.ps1
 
 # Python
 __pycache__/

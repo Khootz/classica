@@ -1,5 +1,8 @@
-// API Base URL - Change this to point to your backend
-export const API_BASE_URL = "http://localhost:8000"
+// API Base URL - Use environment variable in production, localhost in development
+export const API_BASE_URL = 
+  typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL
+    : "http://localhost:8000"
 
 import type {
   Task,

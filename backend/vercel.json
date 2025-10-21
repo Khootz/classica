@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "backend/main.py"
+    }
+  ],
+  "env": {
+    "LANDINGAI_API_KEY": "@landingai_api_key",
+    "OPENROUTER_API_KEY": "@openrouter_api_key"
+  }
+}

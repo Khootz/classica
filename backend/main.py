@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, engine
 from sqlmodel import Session
 from routes import tasks, documents, chat, memo
-from services import pathway_client
+# from services import pathway_client  # Not needed at startup
 
 app = FastAPI(title="CFO Copilot Backend")
 

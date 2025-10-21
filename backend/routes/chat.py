@@ -66,8 +66,9 @@ def create_chat(
     session.add(chat_msg)
     session.commit()
 
-    # Background processing
-    background_tasks.add_task(run_agent_pipeline, chat_id, task_id, user_message, session)
+    # Background processing - DON'T pass the request session
+    # The background task will create its own session
+    background_tasks.add_task(run_agent_pipeline, chat_id, task_id, user_message)
 
     return {"chat_id": chat_id, "status": "pending"}
 
@@ -102,7 +103,13 @@ def get_chat_result(chat_id: str, session: Session = Depends(get_session)):
 # ----------------------
 # Background CFO Agent
 # ----------------------
-def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: Session):
+def run_agent_pipeline(chat_id: str, task_id: str, user_message: str):
+    # Create a fresh database session for the background task
+    from database import engine
+    from sqlmodel import Session
+    
+    session = Session(engine)
+    
     try:
         update_status(chat_id, "loading_data", 10, "Fetching financial data from ADE")
 
@@ -265,3 +272,8 @@ def run_agent_pipeline(chat_id: str, task_id: str, user_message: str, session: S
     except Exception as e:
         update_status(chat_id, "failed", 100, f"Agent pipeline failed: {e}")
         print(f"❌ Agent pipeline failed: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # Always close the session
+        session.close()

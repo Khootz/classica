@@ -17,8 +17,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://classica.vercel.app/", 
-        "https://*.vercel.app"
+        "https://classica.vercel.app",
+        "https://classica-frontend.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -30,6 +30,15 @@ def on_startup():
     init_db()
     # with Session(engine) as session:
     #     pathway_client.rebuild_indexes_from_db(session)
+
+# Health check endpoint for Render
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "CFO Copilot Backend is running"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
 
 # Routes
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
